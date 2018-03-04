@@ -47,9 +47,24 @@ void serve(const service_t & svc);
 
 typedef struct
 {
+	u_int64_t opt_price;
+	u_int64_t opt_put;
+	u_int64_t opt_call;
+	u_int64_t opt_open;
+	u_int64_t opt_low;
+	u_int64_t opt_high;
 }sample_t;
 
-std::list< sample_t > samples;
+#define SAMPLES_PER_RECORD 10
+typedef struct
+{
+	u_int64_t asset_current_price;
+	u_int64_t asset_change_percentage;
+	u_int64_t asset_change_stddev;
+	sample_t samples[SAMPLES_PER_RECORD];
+}record_t;
+
+std::list< record_t > records;
 
 int main(int argc, char *argv[])
 {
