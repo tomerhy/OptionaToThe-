@@ -5,6 +5,14 @@
 #include <iostream>
 using namespace std;
 
+#include <log4cpp/Category.hh>
+#include <log4cpp/FileAppender.hh>
+#include <log4cpp/SimpleLayout.hh>
+#include <log4cpp/RollingFileAppender.hh>
+#include <log4cpp/SimpleLayout.hh>
+#include <log4cpp/BasicLayout.hh>
+#include <log4cpp/PatternLayout.hh>
+
 typedef struct __data_source
 {
 	std::string path;
@@ -142,4 +150,39 @@ void show_usage(const char * prog)
 	std::cout << "-m   max log files" << std::endl;
 	std::cout << "-s   max log size" << std::endl;
 	std::cout << "-r   log level" << std::endl;
+}
+
+void init_log(const log_t & log)
+{
+	static const char the_layout[] = "%d{%y-%m-%d %H:%M:%S.%l}| %-6p | %-15c | %m%n";
+
+	std::string log_file = log.file;
+	log_file.insert(0, "/");
+	log_file.insert(0, log.directory);
+
+    log4cpp::Layout * log_layout = NULL;
+    log4cpp::Appender * appender = new log4cpp::RollingFileAppender("lpm.appender", log_file.c_str(), log.max_size, log.max_files);
+
+    bool pattern_layout = false;
+    try
+    {
+        log_layout = new log4cpp::PatternLayout();
+        ((log4cpp::PatternLayout *)log_layout)->setConversionPattern(the_layout);
+        appender->setLayout(log_layout);
+        pattern_layout = true;
+    }
+    catch(...)
+    {
+        pattern_layout = false;
+    }
+
+    if(!pattern_layout)
+    {
+        log_layout = new log4cpp::BasicLayout();
+        appender->setLayout(log_layout);
+    }
+
+    log4cpp::Category::getInstance("drmn").addAppender(appender);
+    log4cpp::Category::getInstance("drmn").setPriority((log4cpp::Priority::PriorityLevel)log.level);
+    log4cpp::Category::getInstance("drmn").notice("dreamon log start");
 }

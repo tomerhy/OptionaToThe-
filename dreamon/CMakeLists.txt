@@ -12,3 +12,6 @@ set(SOURCE_FILES
 
 add_executable(dreamon ${SOURCE_FILES})
 
+target_link_libraries( dreamon
+	log4cpp
+)
