@@ -76,6 +76,7 @@ int load_record(std::list<std::string> & rec_lines);
 int parse_rec_hdr(record_t & rec, std::string & hdr);
 int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
+int start_svc(const service_t & svc, int * srvc_sock);
 
 std::list< record_t > records;
 
@@ -345,4 +346,15 @@ int parse_sample(sample_t & sam, std::string & samline)
 			__FUNCTION__, sam.opt_call_base, sam.opt_call_high, sam.opt_call_low, sam.opt_call,
 			sam.opt_strike, sam.opt_put, sam.opt_put_low, sam.opt_put_high, sam.opt_put_base);
 	return 0;
+}
+
+void serve(const service_t & svc)
+{
+	int srvc_sock = -1;
+	if(0 != start_svc(svc, &srvc_sock))
+	{
+		log4cpp::Category::getInstance("drmn.dsrc").fatal("%s: failed starting the service.", __FUNCTION__);
+		exit(__LINE__);
+	}
+#error "here"
 }
