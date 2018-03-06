@@ -72,7 +72,7 @@ void show_usage(const char * prog);
 void init_log(const log_t & log);
 void load_data(const data_source_t & dsrc);
 void load_data_file(const char * file);
-void load_record(std::list<std::string> & rec_lines);
+int load_record(std::list<std::string> & rec_lines);
 int parse_rec_hdr(record_t & rec, std::string & hdr);
 int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
@@ -221,7 +221,8 @@ void load_data_file(const char * file)
 	if(NULL != pf)
 	{
 		static const char record_token[] = "Time,Price,%,SD";
-		static const size_t record_line_count = 12, record_load_count = 0;
+		static const size_t record_line_count = 12;
+		size_t record_load_count = 0;
 		char buffer[256];
 		while(NULL != fgets(buffer, 256, pf))
 		{
@@ -230,11 +231,8 @@ void load_data_file(const char * file)
 				std::list<std::string> rec_lines;
 				for(size_t i = 0; i < record_line_count && NULL != fgets(buffer, 256, pf); ++i)
 					rec_lines.push_back(buffer);
-				if(rec_lines.size() == record_line_count)
-				{
-					load_record(rec_lines);
+				if(rec_lines.size() == record_line_count && 0 == load_record(rec_lines))
 					record_load_count++;
-				}
 			}
 		}
 		fclose(pf);
@@ -251,7 +249,7 @@ void load_data_file(const char * file)
 	}
 }
 
-void load_record(std::list<std::string> & rec_lines)
+int load_record(std::list<std::string> & rec_lines)
 {
 	static const char samples_token[] = "Base,High,Low,CALL,,PUT,Low,High,Base";
 
@@ -262,7 +260,7 @@ void load_record(std::list<std::string> & rec_lines)
 	{
 		log4cpp::Category::getInstance("drmn.dsrc").error("%s: failed parsing record header [%s]",
 				__FUNCTION__, i->c_str());
-		return;
+		return -1;
 	}
 	++i;
 
@@ -270,7 +268,7 @@ void load_record(std::list<std::string> & rec_lines)
 	{
 		log4cpp::Category::getInstance("drmn.dsrc").error("%s: invalid samples token [%s]",
 				__FUNCTION__, i->c_str());
-		return;
+		return -1;
 	}
 	++i;
 
@@ -281,11 +279,12 @@ void load_record(std::list<std::string> & rec_lines)
 		{
 			log4cpp::Category::getInstance("drmn.dsrc").error("%s: failed parsing sample[%d]=[%s]",
 					__FUNCTION__, sample_index-1, i->c_str());
-			return;
+			return -1;
 		}
 		++i;
 	}
 	records.push_back(rec);
+	return 0;
 }
 
 static const char comma = ',', quote = '"';
