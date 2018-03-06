@@ -327,7 +327,7 @@ int parse_sample(sample_t & sam, std::string & samline)
 			return -1;
 		stop[i] += 1;
 	}
-	sam.opt_call_base	= strtol(samline.c_str()				, NULL, 10);
+	sam.opt_call_base	= strtol(samline.c_str(), NULL, 10);
 	sam.opt_call_high	= strtol(samline.c_str() + stop[0], NULL, 10);
 	sam.opt_call_low	= strtol(samline.c_str() + stop[1], NULL, 10);
 	sam.opt_call		= strtol(samline.c_str() + stop[2], NULL, 10);
