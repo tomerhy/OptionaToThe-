@@ -221,7 +221,7 @@ void load_data_file(const char * file)
 	if(NULL != pf)
 	{
 		static const char record_token[] = "Time,Price,%,SD";
-		static const size_t record_line_count = 12;
+		static const size_t record_line_count = 12, record_load_count = 0;
 		char buffer[256];
 		while(NULL != fgets(buffer, 256, pf))
 		{
@@ -231,10 +231,15 @@ void load_data_file(const char * file)
 				for(size_t i = 0; i < record_line_count && NULL != fgets(buffer, 256, pf); ++i)
 					rec_lines.push_back(buffer);
 				if(rec_lines.size() == record_line_count)
+				{
 					load_record(rec_lines);
+					record_load_count++;
+				}
 			}
 		}
 		fclose(pf);
+		log4cpp::Category::getInstance("drmn.dsrc").info("%s: %lu records loaded.",
+				__FUNCTION__, record_load_count);
 	}
 	else
 	{
