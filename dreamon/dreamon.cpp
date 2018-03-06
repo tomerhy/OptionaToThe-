@@ -21,7 +21,7 @@ using namespace std;
 typedef struct __data_source
 {
 	std::string path;
-	
+
 	__data_source()
 	: path("")
 	{}
@@ -32,7 +32,7 @@ typedef struct __service
 	std::string address;
 	u_int16_t port;
 	u_int64_t timeout_ms;
-	
+
 	__service()
 	: address("127.0.0.1"), port(20001), timeout_ms(1000)
 	{}
@@ -45,7 +45,7 @@ typedef struct __log
 	size_t max_files;
 	size_t max_size;
 	int level;
-	
+
 	__log()
 	: file("dreamon.log"), directory("./"), max_files(2), max_size(5*1024*1024), level(3)
 	{}
@@ -53,20 +53,17 @@ typedef struct __log
 
 typedef struct
 {
-	u_int64_t opt_price;
-	u_int64_t opt_put;
-	u_int64_t opt_call;
-	u_int64_t opt_open;
-	u_int64_t opt_low;
-	u_int64_t opt_high;
+	u_int64_t opt_strike;
+	u_int64_t opt_put, opt_put_base, opt_put_low, opt_put_high;
+	u_int64_t opt_call, opt_call_base, opt_call_low, opt_call_high;
 }sample_t;
 
 #define SAMPLES_PER_RECORD 10
 typedef struct
 {
-	u_int64_t asset_current_price;
-	u_int64_t asset_change_percentage;
-	u_int64_t asset_change_stddev;
+	u_int64_t current;
+	int64_t percentage;
+	u_int64_t stddev;
 	sample_t samples[SAMPLES_PER_RECORD];
 }record_t;
 
@@ -77,6 +74,7 @@ void load_data(const data_source_t & dsrc);
 void load_data_file(const char * file);
 void load_record(std::list<std::string> & rec_lines);
 int parse_rec_hdr(record_t & rec, std::string & hdr);
+int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
 
 std::list< record_t > records;
@@ -95,6 +93,11 @@ int main(int argc, char *argv[])
 
 void get_options(int argc, char *argv[], data_source_t * dsrc, service_t * svc, log_t * log)
 {
+	if(argc == 1)
+	{
+		show_usage(argv[0]);
+		exit(0);
+	}
 	int opt;
 	while ((opt = getopt(argc, argv, "hf:a:p:t:l:c:m:s:r:")) != -1)
 	{
@@ -133,7 +136,7 @@ void get_options(int argc, char *argv[], data_source_t * dsrc, service_t * svc, 
 		default:
 			std::cerr << "Invalid program arguments." << std::endl;
 			show_usage(argv[0]);
-			exit(-1);
+			exit(__LINE__);
 		}
 	}
 }
@@ -150,7 +153,7 @@ void show_usage(const char * prog)
 	std::cout << "-c   log location" << std::endl;
 	std::cout << "-m   max log files" << std::endl;
 	std::cout << "-s   max log size" << std::endl;
-	std::cout << "-r   log level" << std::endl;
+	std::cout << "-r   log level [fatal=0,alert=100,critical=200,error=300,warning=400,notice=500(default),info=600,debug=700]" << std::endl;
 }
 
 void init_log(const log_t & log)
@@ -245,7 +248,7 @@ void load_data_file(const char * file)
 
 void load_record(std::list<std::string> & rec_lines)
 {
-	static const char samples_token[] = "Call,,Put";
+	static const char samples_token[] = "Base,High,Low,CALL,,PUT,Low,High,Base";
 
 	record_t rec;
 	std::list<std::string>::iterator i = rec_lines.begin();
@@ -266,9 +269,76 @@ void load_record(std::list<std::string> & rec_lines)
 	}
 	++i;
 
+	size_t sample_index = 0;
 	while(rec_lines.end() != i)
 	{
-#error 'continue here'
+		if(0 != parse_sample(rec.samples[sample_index++], *i))
+		{
+			log4cpp::Category::getInstance("drmn.dsrc").error("%s: failed parsing sample[%d]=[%s]",
+					__FUNCTION__, sample_index-1, i->c_str());
+			return;
+		}
+		++i;
 	}
+	records.push_back(rec);
+}
 
+static const char comma = ',', quote = '"';
+
+int parse_rec_hdr(record_t & rec, std::string & hdr)
+{
+	//DateTime,"current.dd",%%,stddev
+
+	std::string::size_type quote1 = hdr.find(quote);
+	if(std::string::npos == quote1)
+		return -1;
+	std::string::size_type quote2 = hdr.find(quote, quote1 + 1);
+	if(std::string::npos == quote2)
+		return -1;
+	std::string prce = hdr.substr((quote1 + 1), quote2 - (quote1 + 1));
+	prce.erase(prce.find(comma), 1);
+	rec.current = (u_int64_t)(100 * strtod(prce.c_str(), NULL));
+
+	std::string::size_type comma1 = hdr.find(comma, quote2 + 1);
+	if(std::string::npos == comma1)
+		return -1;
+	std::string::size_type comma2 = hdr.find(comma, comma1 + 1);
+	if(std::string::npos == comma2)
+		return -1;
+	std::string pcnt = hdr.substr((comma1 + 1), comma2 - (comma1 + 1));
+	rec.percentage =  (int64_t)(100 * strtod(pcnt.c_str(), NULL));
+
+	std::string stdv = hdr.substr(comma2 + 1);
+	rec.stddev = (u_int64_t)(100 * strtod(stdv.c_str(), NULL));
+
+	log4cpp::Category::getInstance("drmn.dsrc").debug("%s: parsed header [%lu, %ld, %lu]",
+			__FUNCTION__, rec.current, rec.percentage, rec.stddev);
+	return 0;
+}
+
+int parse_sample(sample_t & sam, std::string & samline)
+{
+	//Base,		High,	Low,	CALL,	STRIKE,		PUT,	Low,	High,	Base
+	std::string::size_type stop[8], last = std::string::npos;
+	for(size_t i = 0; i < 8; ++i)
+	{
+		last = stop[i] = samline.find(comma, last + 1);
+		if(std::string::npos == last)
+			return -1;
+		stop[i] += 1;
+	}
+	sam.opt_call_base	= strtol(samline.c_str()				, NULL, 10);
+	sam.opt_call_high	= strtol(samline.c_str() + stop[0], NULL, 10);
+	sam.opt_call_low	= strtol(samline.c_str() + stop[1], NULL, 10);
+	sam.opt_call		= strtol(samline.c_str() + stop[2], NULL, 10);
+	sam.opt_strike		= strtol(samline.c_str() + stop[3], NULL, 10);
+	sam.opt_put			= strtol(samline.c_str() + stop[4], NULL, 10);
+	sam.opt_put_low		= strtol(samline.c_str() + stop[5], NULL, 10);
+	sam.opt_put_high	= strtol(samline.c_str() + stop[6], NULL, 10);
+	sam.opt_put_base	= strtol(samline.c_str() + stop[7], NULL, 10);
+
+	log4cpp::Category::getInstance("drmn.dsrc").debug("%s: parsed sample [%lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu]",
+			__FUNCTION__, sam.opt_call_base, sam.opt_call_high, sam.opt_call_low, sam.opt_call,
+			sam.opt_strike, sam.opt_put, sam.opt_put_low, sam.opt_put_high, sam.opt_put_base);
+	return 0;
 }
