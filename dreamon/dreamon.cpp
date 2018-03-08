@@ -18,9 +18,11 @@ using namespace std;
 #include <log4cpp/BasicLayout.hh>
 #include <log4cpp/PatternLayout.hh>
 
-#include <event2/event.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
-bool event_loop_run_flag = true;
+#include <event2/event.h>
 
 typedef struct __data_source
 {
@@ -81,8 +83,9 @@ int parse_rec_hdr(record_t & rec, std::string & hdr);
 int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
 int start_svc(const service_t & svc, int * srvc_sock);
-int register_exit_evt(struct event_base * the_base);
-int register_accept_evt(struct event_base * the_base, int srvc_sock);
+
+void signal_cb(evutil_socket_t, short, void *);
+void accept_cb(evutil_socket_t, short, void *);
 
 std::list< record_t > records;
 
@@ -362,18 +365,72 @@ void serve(const service_t & svc)
 		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed starting the service.", __FUNCTION__);
 		exit(__LINE__);
 	}
+
 	struct event_base * the_base = event_base_new();
-	if(0 != register_exit_evt(the_base))
+
+	struct event * the_signal = evsignal_new(the_base, 2/*SIGINT*/, signal_cb, the_base);
+	if(0 != event_add(the_signal, NULL))
 	{
-		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed to register the exit check event.", __FUNCTION__);
+		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed adding a signal event.", __FUNCTION__);
 		exit(__LINE__);
 	}
-	if(0 != register_accept_evt(the_base, srvc_sock))
+
+	struct event * the_accept = event_new(the_base, srvc_sock, EV_READ, accept_cb, the_base);
+	if(0 != event_add(the_accept, NULL))
 	{
-		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed to register the socket accept event.", __FUNCTION__);
+		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed adding an accept event.", __FUNCTION__);
 		exit(__LINE__);
 	}
-	event_loop_run_flag = true;
+
 	event_base_dispatch(the_base);
+
+	event_free(the_accept);
+	event_free(the_signal);
 	event_base_free(the_base);
+}
+
+int start_svc(const service_t & svc, int * srvc_sock)
+{
+	if (0 > (*srvc_sock = socket(AF_INET, SOCK_STREAM, 0)))
+    {
+        int errcode = errno;
+        char errmsg[256];
+        log4cpp::Category::getInstance("drmn.srvc").error("%s: socket() failed with error %d : [%s].",
+        		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
+        return -1;
+    }
+
+	struct sockaddr_in service_address;
+	if (inet_aton(svc.address.c_str(), &service_address.sin_addr) == 0)
+    {
+		log4cpp::Category::getInstance("drmn.srvc").error("%s: invalid service address [%s].",
+				__FUNCTION__, svc.address.c_str());
+        return -1;
+    }
+	service_address.sin_port = htons(svc.port);
+	service_address.sin_family = AF_INET;
+
+	if (0 != bind(*srvc_sock, (const sockaddr *)&service_address, (socklen_t)sizeof(struct sockaddr_in)))
+	{
+        int errcode = errno;
+        char errmsg[256];
+        log4cpp::Category::getInstance("drmn.srvc").error("%s: bind() to [%s:%hu] failed with error %d : [%s].",
+        		__FUNCTION__, svc.address.c_str(), svc.port, errcode, strerror_r(errcode, errmsg, 256));
+        close(*srvc_sock);
+        *srvc_sock = -1;
+        return -1;
+	}
+
+	if (0 != listen(*srvc_sock, 10))
+	{
+        int errcode = errno;
+        char errmsg[256];
+        log4cpp::Category::getInstance("drmn.srvc").error("%s: listen() on [%s:%hu] failed with error %d : [%s].",
+        		__FUNCTION__, svc.address.c_str(), svc.port, errcode, strerror_r(errcode, errmsg, 256));
+        close(*srvc_sock);
+        *srvc_sock = -1;
+        return -1;
+	}
+
+	return 0;
 }
