@@ -83,9 +83,10 @@ int parse_rec_hdr(record_t & rec, std::string & hdr);
 int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
 int start_svc(const service_t & svc, int * srvc_sock);
-
 void signal_cb(evutil_socket_t, short, void *);
 void accept_cb(evutil_socket_t, short, void *);
+void write_cb(evutil_socket_t, short, void *);
+void wait_cb(evutil_socket_t, short, void *);
 
 std::list< record_t > records;
 
@@ -357,6 +358,12 @@ int parse_sample(sample_t & sam, std::string & samline)
 	return 0;
 }
 
+typedef struct
+{
+	struct event_base * the_base;
+	u_int64_t timeout_ms;
+}accept_t;
+
 void serve(const service_t & svc)
 {
 	int srvc_sock = -1;
@@ -368,24 +375,28 @@ void serve(const service_t & svc)
 
 	struct event_base * the_base = event_base_new();
 
-	struct event * the_signal = evsignal_new(the_base, 2/*SIGINT*/, signal_cb, the_base);
-	if(0 != event_add(the_signal, NULL))
+	struct event * signal_evt = evsignal_new(the_base, 2/*=SIGINT*/, signal_cb, the_base);
+	if(0 != event_add(signal_evt, NULL))
 	{
 		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed adding a signal event.", __FUNCTION__);
 		exit(__LINE__);
 	}
 
-	struct event * the_accept = event_new(the_base, srvc_sock, EV_READ, accept_cb, the_base);
-	if(0 != event_add(the_accept, NULL))
+	accept_t the_accept;
+	the_accept.the_base = the_base;
+	the_accept.timeout_ms = svc.timeout_ms;
+	struct event * accept_evt = event_new(the_base, srvc_sock, EV_READ|EV_PERSIST, accept_cb, &the_accept);
+	if(0 != event_add(accept_evt, NULL))
 	{
 		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed adding an accept event.", __FUNCTION__);
 		exit(__LINE__);
 	}
 
+	log4cpp::Category::getInstance("drmn.srvc").notice("%s: starting serive.", __FUNCTION__);
 	event_base_dispatch(the_base);
 
-	event_free(the_accept);
-	event_free(the_signal);
+	event_free(accept_evt);
+	event_free(signal_evt);
 	event_base_free(the_base);
 }
 
@@ -433,4 +444,107 @@ int start_svc(const service_t & svc, int * srvc_sock)
 	}
 
 	return 0;
+}
+
+void signal_cb(evutil_socket_t, short, void * arg)
+{
+    log4cpp::Category::getInstance("drmn.srvc").notice("%s: SIGINT received; breaking event loop.",	__FUNCTION__);
+    event_base_loopbreak((struct event_base *)arg);
+}
+
+typedef struct
+{
+	struct event_base * the_base;
+	std::list< record_t >::const_iterator record;
+	u_int64_t timeout_ms;
+	int conn_sock;
+	struct event * conn_evt;
+	size_t records_sent;
+}conn_t;
+
+void accept_cb(evutil_socket_t srvc_sock, short what, void * arg)
+{
+    struct sockaddr_in conn_addr;
+    socklen_t conn_addr_size = sizeof(struct sockaddr_in);
+    int conn_sock = accept(srvc_sock, (struct sockaddr *)&conn_addr, &conn_addr_size);
+    if(0 > conn_sock)
+    {
+        int errcode = errno;
+        char errmsg[256];
+        log4cpp::Category::getInstance("drmn.srvc").error("%s: accept() failed with error %d : [%s].",
+        		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
+    }
+    else
+    {
+    	char address[64];
+    	log4cpp::Category::getInstance("drmn.srvc").notice("%s: accepted a new connection: FD=%d from [%s:%hu].",
+    			__FUNCTION__, conn_sock, inet_ntop(AF_INET, &conn_addr.sin_addr, address, 64), ntohs(conn_addr.sin_port));
+    }
+
+    accept_t * the_accept = (accept_t *)arg;
+    conn_t * the_conn = new conn_t;
+    the_conn->the_base = the_accept->the_base;
+    the_conn->record = records.begin();
+    the_conn->timeout_ms = the_accept->timeout_ms;
+    the_conn->conn_sock = conn_sock;
+    the_conn->records_sent = 0;
+    the_conn->conn_evt = event_new(the_conn->the_base, the_conn->conn_sock, EV_WRITE, write_cb, the_conn);
+    event_add(the_conn->conn_evt, NULL);
+}
+
+void write_cb(evutil_socket_t conn_sock, short, void * arg)
+{
+	conn_t * the_conn = (conn_t *)arg;
+	assert(the_conn->conn_sock == conn_sock);
+	bool drop_conn = false;
+	if(records.end() != the_conn->record)
+	{
+		ssize_t written = send(conn_sock, (const record_t *)(&(*the_conn->record)), sizeof(record_t), MSG_NOSIGNAL);
+		if(0 > written)
+		{
+	        int errcode = errno;
+	        char errmsg[256];
+	        log4cpp::Category::getInstance("drmn.srvc").error("%s: send() to FD=%d failed with error %d : [%s].",
+	        		__FUNCTION__, conn_sock, errcode, strerror_r(errcode, errmsg, 256));
+	        drop_conn = true;
+		}
+		else
+		{
+	        log4cpp::Category::getInstance("drmn.srvc").debug("%s: %u records were sent to connection with FD=%d.",
+	        		__FUNCTION__, ++the_conn->records_sent, conn_sock);
+			the_conn->record++;
+		}
+	}
+	else
+	{
+        log4cpp::Category::getInstance("drmn.srvc").debug("%s: done sending records to connection with FD=%d.",
+        		__FUNCTION__, conn_sock);
+		drop_conn = true;
+	}
+
+	if(!drop_conn)//done write; go to wait;
+	{
+		event_free(the_conn->conn_evt);
+		the_conn->conn_evt = evtimer_new(the_conn->the_base, wait_cb, the_conn);
+		struct timeval wait_timeout = { the_conn->timeout_ms / 1000 , (the_conn->timeout_ms % 1000) * 1000 };
+		evtimer_add(the_conn->conn_evt, &wait_timeout);
+		return;
+	}
+
+    log4cpp::Category::getInstance("drmn.srvc").notice("%s: connection with FD=%d is being dropped.",
+    		__FUNCTION__, conn_sock);
+    close(conn_sock);
+    event_free(the_conn->conn_evt);
+    delete the_conn;
+}
+
+void wait_cb(evutil_socket_t, short, void * arg)
+{
+	conn_t * the_conn = (conn_t *)arg;
+    log4cpp::Category::getInstance("drmn.srvc").debug("%s: wait done for connection with FD=%d.",
+    		__FUNCTION__, the_conn->conn_sock);
+
+    event_free(the_conn->conn_evt);
+    the_conn->conn_evt = event_new(the_conn->the_base, the_conn->conn_sock, EV_WRITE, write_cb, the_conn);
+    event_add(the_conn->conn_evt, NULL);
 }
