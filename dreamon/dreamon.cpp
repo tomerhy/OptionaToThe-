@@ -20,6 +20,8 @@ using namespace std;
 
 #include <event2/event.h>
 
+bool event_loop_run_flag = true;
+
 typedef struct __data_source
 {
 	std::string path;
@@ -371,6 +373,7 @@ void serve(const service_t & svc)
 		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed to register the socket accept event.", __FUNCTION__);
 		exit(__LINE__);
 	}
+	event_loop_run_flag = true;
 	event_base_dispatch(the_base);
 	event_base_free(the_base);
 }
