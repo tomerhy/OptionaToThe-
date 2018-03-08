@@ -18,6 +18,8 @@ using namespace std;
 #include <log4cpp/BasicLayout.hh>
 #include <log4cpp/PatternLayout.hh>
 
+#include <event2/event.h>
+
 typedef struct __data_source
 {
 	std::string path;
@@ -77,6 +79,8 @@ int parse_rec_hdr(record_t & rec, std::string & hdr);
 int parse_sample(sample_t & sam, std::string & samline);
 void serve(const service_t & svc);
 int start_svc(const service_t & svc, int * srvc_sock);
+int register_exit_evt(struct event_base * the_base);
+int register_accept_evt(struct event_base * the_base, int srvc_sock);
 
 std::list< record_t > records;
 
@@ -353,8 +357,20 @@ void serve(const service_t & svc)
 	int srvc_sock = -1;
 	if(0 != start_svc(svc, &srvc_sock))
 	{
-		log4cpp::Category::getInstance("drmn.dsrc").fatal("%s: failed starting the service.", __FUNCTION__);
+		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed starting the service.", __FUNCTION__);
 		exit(__LINE__);
 	}
-#error "here"
+	struct event_base * the_base = event_base_new();
+	if(0 != register_exit_evt(the_base))
+	{
+		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed to register the exit check event.", __FUNCTION__);
+		exit(__LINE__);
+	}
+	if(0 != register_accept_evt(the_base, srvc_sock))
+	{
+		log4cpp::Category::getInstance("drmn.srvc").fatal("%s: failed to register the socket accept event.", __FUNCTION__);
+		exit(__LINE__);
+	}
+	event_base_dispatch(the_base);
+	event_base_free(the_base);
 }
