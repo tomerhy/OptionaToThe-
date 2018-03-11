@@ -8,6 +8,7 @@ INCLUDE_DIRECTORIES(
 
 set(SOURCE_FILES
 	operator.cpp
+	config.h
 )
 
 add_executable(operator ${SOURCE_FILES})
