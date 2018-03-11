@@ -14,10 +14,12 @@
 #include <log4cpp/PatternLayout.hh>
 
 #include "config.h"
+#include "op_manager.h"
 
 void get_options(int argc, char *argv[], std::string & conf_file);
 void show_usage(const char * prog);
 int init_log(const logger_global_conf & log_conf);
+int create_manager(const operator_conf & op_conf, op_manager * & mgr);
 
 int main(int argc, char *argv[])
 {
@@ -36,8 +38,30 @@ int main(int argc, char *argv[])
 		std::cerr << "main: failed to initialize the log" << std::endl;
 		exit(__LINE__);
 	}
+    log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log start");
 
 	//objects
+	op_manager * mgr = NULL;
+	if(0 != create_manager(conf, mgr))
+	{
+		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to create the manager.");
+		exit(__LINE__);
+	}
+
+	if(0 != mgr->init(*conf.mngr_conf))
+	{
+		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to initialize the manager.");
+		exit(__LINE__);
+	}
+
+	if(0 != mgr->launch())
+	{
+		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to launch the manager.");
+		exit(__LINE__);
+	}
+
+    log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log stop");
+	return 0;
 }
 
 void get_options(int argc, char *argv[], std::string & conf_file)
@@ -103,5 +127,4 @@ int init_log(const logger_global_conf & log_conf)
 
     log4cpp::Category::getInstance(log_conf.category).addAppender(appender);
     log4cpp::Category::getInstance(log_conf.category).setPriority((log4cpp::Priority::PriorityLevel)log_conf.level);
-    log4cpp::Category::getInstance(log_conf.category).notice("dreamon log start");
 }
