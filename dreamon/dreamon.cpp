@@ -5,7 +5,6 @@
 #include <string.h>
 #include <list>
 #include <iostream>
-using namespace std;
 
 #include <sys/types.h>
 #include <sys/stat.h>
