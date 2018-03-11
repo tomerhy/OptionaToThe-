@@ -1,0 +1,15 @@
+dreamon/.cproject
+dreamon/.project
+dreamon/CMakeCache.txt
+dreamon/CMakeFiles/
+dreamon/Makefile
+dreamon/cmake_install.cmake
+dreamon/dreamon
+operator/.cproject
+operator/.project
+operator/CMakeCache.txt
+operator/CMakeFiles/
+operator/Makefile
+operator/cmake_install.cmake
+operator/operator
+
