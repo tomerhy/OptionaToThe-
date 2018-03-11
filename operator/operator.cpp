@@ -2,8 +2,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <string>
+#include <string.h>
+#include <list>
 #include <iostream>
+#include <string>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <log4cpp/Category.hh>
 #include <log4cpp/FileAppender.hh>
@@ -40,7 +45,7 @@ int main(int argc, char *argv[])
 	}
     log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log start");
 
-	//objects
+	/*
 	op_manager * mgr = NULL;
 	if(0 != create_manager(conf, mgr))
 	{
@@ -58,7 +63,7 @@ int main(int argc, char *argv[])
 	{
 		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to launch the manager.");
 		exit(__LINE__);
-	}
+	}*/
 
     log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log stop");
 	return 0;
@@ -127,4 +132,5 @@ int init_log(const logger_global_conf & log_conf)
 
     log4cpp::Category::getInstance(log_conf.category).addAppender(appender);
     log4cpp::Category::getInstance(log_conf.category).setPriority((log4cpp::Priority::PriorityLevel)log_conf.level);
+    return 0;
 }

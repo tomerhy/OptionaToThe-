@@ -43,6 +43,14 @@ public:
 	logger_base_conf * log_conf;
 };
 
+class dreamer_conf : public informer_conf
+{
+public:
+	dreamer_conf()
+	: informer_conf()
+	{}
+};
+
 class executor_conf
 {
 public:
