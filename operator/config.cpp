@@ -27,8 +27,8 @@ int get_log_global_conf(xmlNodePtr log_node, logger_global_conf & conf);
 int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf);
 int load_log_level(const char * level_txt);
 int get_log_basic_conf(xmlNodePtr log_node, logger_base_conf & conf);
-int get_dreamer_conf(xmlNodePtr manager_node, dreamer_conf & conf);
-int get_executor_conf(xmlNodePtr manager_node, executor_conf & conf);
+int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf);
+int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf);
 
 int load_config(const char * config_file, operator_conf & conf)
 {
@@ -348,19 +348,70 @@ int load_log_level(const char * level_txt)
 
 int get_log_basic_conf(xmlNodePtr log_node, logger_base_conf & conf)
 {
-#warning 'todo'
-	return 0;
+	static const char category_node_name[] = "Category";
+	static const char level_node_name[] = "Level";
+
+	static const u_int8_t CAT_FL = 0x01;
+	static const u_int8_t LEV_FL = 0x02;
+
+	u_int8_t set_flags = 0;
+
+	for(xmlNodePtr p = log_node->children; p != NULL; p = p->next)
+	{
+		if(p->name == NULL)
+		{
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, category_node_name))
+		{
+			conf.category = (char *)p->children->content;
+			set_flags |= CAT_FL;
+		}
+		else if(0 == strcmp((const char*)p->name, level_node_name))
+		{
+			conf.level = load_log_level((char *)p->children->content);
+			if(800 != conf.level) set_flags |= LEV_FL;
+		}
+	}
+	return (CAT_FL|LEV_FL == set_flags)? 0: -1;
 }
 
-int get_dreamer_conf(xmlNodePtr manager_node, dreamer_conf & conf)
+int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf)
 {
-#warning 'todo'
-	return 0;
+	static const char log_node_name[] = "Log";
+
+	for(xmlNodePtr p = dreamer_node->children; p != NULL; p = p->next)
+	{
+		if(p->name == NULL)
+		{
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, log_node_name))
+		{
+			conf.log_conf = new logger_base_conf;
+			get_log_basic_conf(p, *conf.log_conf);
+		}
+	}
 }
 
-int get_executor_conf(xmlNodePtr manager_node, executor_conf & conf)
+int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf)
 {
-#warning 'todo'
-	return 0;
+	static const char log_node_name[] = "Log";
+
+	for(xmlNodePtr p = executor_node->children; p != NULL; p = p->next)
+	{
+		if(p->name == NULL)
+		{
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, log_node_name))
+		{
+			conf.log_conf = new logger_base_conf;
+			get_log_basic_conf(p, *conf.log_conf);
+		}
+	}
 }
 

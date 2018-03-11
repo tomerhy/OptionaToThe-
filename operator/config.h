@@ -39,6 +39,10 @@ public:
 	informer_conf()
 	: log_conf(NULL)
 	{}
+	virtual ~informer_conf()
+	{
+		delete log_conf;
+	}
 
 	logger_base_conf * log_conf;
 };
@@ -49,6 +53,8 @@ public:
 	dreamer_conf()
 	: informer_conf()
 	{}
+	~dreamer_conf()
+	{}
 };
 
 class executor_conf
@@ -57,6 +63,10 @@ public:
 	executor_conf()
 	: log_conf(NULL)
 	{}
+	~executor_conf()
+	{
+		delete log_conf;
+	}
 
 	logger_base_conf * log_conf;
 };
@@ -67,6 +77,12 @@ public:
 	manager_conf()
 	: log_conf(NULL), info_conf(NULL), exec_conf(NULL)
 	{}
+	~manager_conf()
+	{
+		delete log_conf;
+		delete info_conf;
+		delete exec_conf;
+	}
 
 	logger_base_conf * log_conf;
 	informer_conf * info_conf;
@@ -79,6 +95,11 @@ public:
 	operator_conf()
 	: log_conf(NULL), mngr_conf(NULL)
 	{}
+	~operator_conf()
+	{
+		delete log_conf;
+		delete mngr_conf;
+	}
 
 	logger_global_conf * log_conf;
 	manager_conf * mngr_conf;
