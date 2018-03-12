@@ -13,6 +13,7 @@ set(SOURCE_FILES
 	config.cpp
 	op_manager.h
 	op_manager.cpp
+	record.h
 )
 
 add_executable(operator ${SOURCE_FILES})
