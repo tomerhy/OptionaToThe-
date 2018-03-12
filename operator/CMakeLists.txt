@@ -11,6 +11,8 @@ set(SOURCE_FILES
 	operator.cpp
 	config.h
 	config.cpp
+	op_manager.h
+	op_manager.cpp
 )
 
 add_executable(operator ${SOURCE_FILES})
@@ -19,4 +21,5 @@ target_link_libraries( operator
 	log4cpp
 	event
 	xml2
+	pthread
 )

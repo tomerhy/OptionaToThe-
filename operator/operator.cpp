@@ -18,13 +18,15 @@
 #include <log4cpp/BasicLayout.hh>
 #include <log4cpp/PatternLayout.hh>
 
+#include <event2/event.h>
+
 #include "config.h"
 #include "op_manager.h"
 
 void get_options(int argc, char *argv[], std::string & conf_file);
 void show_usage(const char * prog);
 int init_log(const logger_global_conf & log_conf);
-int create_manager(const operator_conf & op_conf, op_manager * & mgr);
+void wait4ctrl_c();
 
 int main(int argc, char *argv[])
 {
@@ -45,26 +47,23 @@ int main(int argc, char *argv[])
 	}
     log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log start");
 
-	/*
-	op_manager * mgr = NULL;
-	if(0 != create_manager(conf, mgr))
-	{
-		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to create the manager.");
-		exit(__LINE__);
-	}
+	op_manager * mgr = new op_manager;
 
-	if(0 != mgr->init(*conf.mngr_conf))
+	if(0 != mgr->init(conf.log_conf->category, *conf.mngr_conf))
 	{
 		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to initialize the manager.");
 		exit(__LINE__);
 	}
 
-	if(0 != mgr->launch())
+	if(0 != mgr->start())
 	{
-		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to launch the manager.");
+		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to start the manager.");
 		exit(__LINE__);
-	}*/
+	}
 
+	wait4ctrl_c();
+	mgr->stop();
+	delete mgr;
     log4cpp::Category::getInstance(conf.log_conf->category).notice("operator log stop");
 	return 0;
 }
@@ -133,4 +132,19 @@ int init_log(const logger_global_conf & log_conf)
     log4cpp::Category::getInstance(log_conf.category).addAppender(appender);
     log4cpp::Category::getInstance(log_conf.category).setPriority((log4cpp::Priority::PriorityLevel)log_conf.level);
     return 0;
+}
+
+void ctrl_c_cb(evutil_socket_t, short, void * arg)
+{
+    event_base_loopbreak((struct event_base *)arg);
+}
+
+void wait4ctrl_c()
+{
+	struct event_base * the_base = event_base_new();
+	struct event * ctrl_c_evt = evsignal_new(the_base, 2/*=SIGINT*/, ctrl_c_cb, the_base);
+	event_add(ctrl_c_evt, NULL);
+	event_base_dispatch(the_base);
+	event_free(ctrl_c_evt);
+	event_base_free(the_base);
 }

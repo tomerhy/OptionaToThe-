@@ -84,6 +84,8 @@ public:
 		delete exec_conf;
 	}
 
+	enum { dreamer = 0 } informer_type;
+
 	logger_base_conf * log_conf;
 	informer_conf * info_conf;
 	executor_conf * exec_conf;

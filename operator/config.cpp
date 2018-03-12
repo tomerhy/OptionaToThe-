@@ -305,6 +305,7 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 		}
 		else if(0 == strcmp((const char*)p->name, dreamer_node_name))
 		{
+			conf.informer_type = manager_conf::dreamer;
 			conf.info_conf = new dreamer_conf;
 			get_dreamer_conf(p, *((dreamer_conf *)conf.info_conf));
 		}
