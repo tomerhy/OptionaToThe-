@@ -16,9 +16,6 @@ class op_manager
 	void run();
 
     sem_t m_run_flag;
-	int get_run_flag(size_t & value);
-	int inc_run_flag();
-	int dec_run_flag();
 public:
 	op_manager();
 	~op_manager();
