@@ -14,6 +14,9 @@ set(SOURCE_FILES
 	op_manager.h
 	op_manager.cpp
 	record.h
+	informer.h
+	dreamer.h
+	dreamer.cpp
 )
 
 add_executable(operator ${SOURCE_FILES})

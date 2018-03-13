@@ -55,6 +55,8 @@ public:
 	{}
 	~dreamer_conf()
 	{}
+
+	std::string
 };
 
 class executor_conf

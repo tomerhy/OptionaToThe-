@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <stdlib.h>
+
 typedef struct
 {
 	u_int64_t current, base, low, high;

@@ -1,6 +1,10 @@
 
 #pragma once
 
+class informer_conf;
+
+#include "informer.h"
+
 class dreamer : public informer
 {
 public:

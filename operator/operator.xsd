@@ -135,8 +135,7 @@
 		</xs:annotation>
 		<xs:complexContent>
 			<xs:extension base="LoggerConfig">
-				<xs:sequence>
-				</xs:sequence>
+				<xs:sequence/>
 			</xs:extension>
 		</xs:complexContent>
 	</xs:complexType>
@@ -144,6 +143,26 @@
 		<xs:complexContent>
 			<xs:extension base="InformerConfig">
 				<xs:sequence>
+					<xs:element name="service_address" type="IPAddress">
+						<xs:annotation>
+							<xs:documentation>IP address of the information service, namely the dreamon application server.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="service_port" type="IPPort">
+						<xs:annotation>
+							<xs:documentation>IP port of the information service, namely the dreamon application server.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="local_address" type="IPAddress" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Local IP address to bind to in accessing the server [optional].</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="local_port" type="IPPort" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Local IP port to bind to in accessing the server [optional].</xs:documentation>
+						</xs:annotation>
+					</xs:element>
 				</xs:sequence>
 			</xs:extension>
 		</xs:complexContent>
@@ -154,8 +173,7 @@
 		</xs:annotation>
 		<xs:complexContent>
 			<xs:extension base="LoggerConfig">
-				<xs:sequence>
-				</xs:sequence>
+				<xs:sequence/>
 			</xs:extension>
 		</xs:complexContent>
 	</xs:complexType>

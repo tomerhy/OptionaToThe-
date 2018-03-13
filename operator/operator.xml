@@ -20,6 +20,8 @@
 				<Category>drm</Category>
 				<Level>debug</Level>
 			</Log>
+			<service_address>127.0.0.1</service_address>
+			<service_port>20001</service_port>
 		</Dreamer>
 		<Executor>
 			<Log>

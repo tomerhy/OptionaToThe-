@@ -3,6 +3,8 @@
 
 class informer_conf;
 
+#include "record.h"
+
 class informer_cb_api
 {
 public:
@@ -11,10 +13,13 @@ public:
 
 class informer
 {
+private:
 	informer_cb_api * m_informee;
+protected:
+	void inform(const trade_info_t & update) { m_informee->trade_info_update(update); }
 public:
-	informer();
-	virtual ~informer();
+	informer() : m_informee(NULL) {}
+	virtual ~informer() {}
 
 	void set_informee(informer_cb_api * informee) { m_informee = informee; }
 
