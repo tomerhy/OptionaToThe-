@@ -13,18 +13,20 @@ class op_manager : public informer_cb_api
 {
     pthread_t m_proc_thread;
     std::string m_log_cat;
+    sem_t m_run_flag;
 
     pthread_mutex_t m_record_lock, m_event_lock;
     bool m_processed;
     trade_info_t m_record;
 	pthread_cond_t m_event;
 
+	informer * m_informer;
+
     friend void * manager_proc(void *);
 	void run();
 	void process_record_update();
 	void process_record(const trade_info_t &);
 
-    sem_t m_run_flag;
 public:
 	op_manager();
 	~op_manager();

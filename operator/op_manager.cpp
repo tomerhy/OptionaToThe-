@@ -8,6 +8,7 @@
 
 #include "op_manager.h"
 #include "config.h"
+#include "dreamer.h"
 
 void * manager_proc(void * arg)
 {
@@ -16,7 +17,7 @@ void * manager_proc(void * arg)
 }
 
 op_manager::op_manager()
-: m_proc_thread(0), m_processed(true)
+: m_proc_thread(0), m_processed(true), m_informer(NULL)
 {
 	sem_init(&m_run_flag, 0, 0);
 	pthread_mutex_init(&m_record_lock, NULL);
@@ -26,6 +27,12 @@ op_manager::op_manager()
 
 op_manager::~op_manager()
 {
+	if(NULL != m_informer)
+	{
+		delete m_informer;
+		m_informer = NULL;
+	}
+
 	sem_destroy(&m_run_flag);
 	pthread_mutex_destroy(&m_record_lock);
 	pthread_mutex_destroy(&m_event_lock);
@@ -36,6 +43,23 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 {
 	m_log_cat = log_cat + '.' + conf->log_conf->category;
 	log4cpp::Category::getInstance(m_log_cat).setPriority((log4cpp::Priority::PriorityLevel)conf->log_conf->level);
+
+	switch(conf->informer_type)
+	{
+	case manager_conf::dreamer:
+		log4cpp::Category::getInstance(m_log_cat).debug("%s: dreamer type informer set.", __FUNCTION__);
+		m_informer = new dreamer;
+		break;
+	default:
+		log4cpp::Category::getInstance(m_log_cat).error("%s: set dreamer type %u is not supported.", __FUNCTION__, (u_int32_t)conf->informer_type);
+		return -1;
+	}
+
+	if(0 != m_informer->init(conf->info_conf))
+	{
+		log4cpp::Category::getInstance(m_log_cat).error("%s: informer init() failed.", __FUNCTION__);
+		return -1;
+	}
 
 	return 0;
 }
@@ -87,12 +111,23 @@ int op_manager::start()
 		}
 		return -1;
 	}
+
+	if(0 != m_informer->start())
+	{
+    	log4cpp::Category::getInstance(m_log_cat).error("%s: informer start() failed.", __FUNCTION__);
+    	stop();
+    	return -1;
+	}
+
 	log4cpp::Category::getInstance(m_log_cat).info("%s: started.", __FUNCTION__);
 	return 0;
 }
 
 int op_manager::stop()
 {
+	if(0 != m_informer->stop())
+    	log4cpp::Category::getInstance(m_log_cat).error("%s: informer stop() failed.", __FUNCTION__);
+
 	int errcode;
 	if(0 != sem_wait(&m_run_flag))
 	{
