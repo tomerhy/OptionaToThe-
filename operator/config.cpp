@@ -208,11 +208,14 @@ int get_operator_conf(xmlDocPtr xml_doc, operator_conf & conf)
 			{
 				conf.log_conf = new logger_global_conf;
 				get_log_global_conf(p, *conf.log_conf);
+				continue;
 			}
-			else if(0 == strcmp((const char*)p->name, mng_node_name))
+
+			if(0 == strcmp((const char*)p->name, mng_node_name))
 			{
 				conf.mngr_conf = new manager_conf;
 				get_manager_conf(p, *conf.mngr_conf);
+				continue;
 			}
 		}
 	}
@@ -250,36 +253,49 @@ int get_log_global_conf(xmlNodePtr log_node, logger_global_conf & conf)
 		{
 			conf.category = (char *)p->children->content;
 			set_flags |= CAT_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, level_node_name))
+
+		if(0 == strcmp((const char*)p->name, level_node_name))
 		{
 			conf.level = load_log_level((char *)p->children->content);
 			if(800 != conf.level) set_flags |= LEV_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, file_node_name))
+
+		if(0 == strcmp((const char*)p->name, file_node_name))
 		{
 			conf.file = (char *)p->children->content;
 			set_flags |= FIL_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, path_node_name))
+
+		if(0 == strcmp((const char*)p->name, path_node_name))
 		{
 			conf.directory = (char *)p->children->content;
 			set_flags |= DIR_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, size_node_name))
+
+		if(0 == strcmp((const char*)p->name, size_node_name))
 		{
 			conf.max_size = 1024 * 1024 * strtol((char *)p->children->content, NULL, 10);
 			set_flags |= SIZ_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, files_node_name))
+
+		if(0 == strcmp((const char*)p->name, files_node_name))
 		{
 			conf.max_files = strtol((char *)p->children->content, NULL, 10);
 			set_flags |= FLS_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, layout_node_name))
+
+		if(0 == strcmp((const char*)p->name, layout_node_name))
 		{
 			conf.layout = (char *)p->children->content;
 			set_flags |= LAY_FL;
+			continue;
 		}
 	}
 	return (CAT_FL|LEV_FL|FIL_FL|DIR_FL|SIZ_FL|FLS_FL|LAY_FL == set_flags)? 0: -1;
@@ -290,6 +306,12 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 	static const char log_node_name[] = "Log";
 	static const char dreamer_node_name[] = "Dreamer";
 	static const char executor_node_name[] = "Executor";
+
+	static const u_int8_t LOG_FL = 0x01;
+	static const u_int8_t INF_FL = 0x02;
+	static const u_int8_t EXE_FL = 0x04;
+
+	u_int8_t set_flags = 0;
 
 	for(xmlNodePtr p = manager_node->children; p != NULL; p = p->next)
 	{
@@ -302,19 +324,28 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 		{
 			conf.log_conf = new logger_base_conf;
 			get_log_basic_conf(p, *conf.log_conf);
+			set_flags |= LOG_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, dreamer_node_name))
+
+		if(0 == strcmp((const char*)p->name, dreamer_node_name))
 		{
 			conf.informer_type = manager_conf::dreamer;
 			conf.info_conf = new dreamer_conf;
 			get_dreamer_conf(p, *((dreamer_conf *)conf.info_conf));
+			set_flags |= INF_FL;
+			continue;
 		}
-		else if(0 == strcmp((const char*)p->name, executor_node_name))
+
+		if(0 == strcmp((const char*)p->name, executor_node_name))
 		{
 			conf.exec_conf = new executor_conf;
 			get_executor_conf(p, *conf.exec_conf);
+			set_flags |= EXE_FL;
+			continue;
 		}
 	}
+	return (LOG_FL|INF_FL|EXE_FL == set_flags)? 0: -1;
 }
 
 int load_log_level(const char * level_txt)
@@ -381,6 +412,16 @@ int get_log_basic_conf(xmlNodePtr log_node, logger_base_conf & conf)
 int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf)
 {
 	static const char log_node_name[] = "Log";
+	static const char srvc_addr_node_name[] = "service_address";
+	static const char srvc_port_node_name[] = "service_port";
+	static const char locl_addr_node_name[] = "local_address";
+	static const char locl_port_node_name[] = "local_port";
+
+	static const u_int8_t LOG_FL = 0x01;
+	static const u_int8_t SVC_ADDR_FL = 0x02;
+	static const u_int8_t SVC_PORT_FL = 0x04;
+
+	u_int8_t set_flags = 0;
 
 	for(xmlNodePtr p = dreamer_node->children; p != NULL; p = p->next)
 	{
@@ -393,13 +434,46 @@ int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf)
 		{
 			conf.log_conf = new logger_base_conf;
 			get_log_basic_conf(p, *conf.log_conf);
+			set_flags |= LOG_FL;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, srvc_addr_node_name))
+		{
+			conf.srvc_addr = (char *)p->children->content;
+			set_flags |= SVC_ADDR_FL;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, srvc_port_node_name))
+		{
+			conf.srvc_port = (u_int16_t)strtol((char *)p->children->content, NULL, 10);
+			set_flags |= SVC_PORT_FL;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, locl_addr_node_name))
+		{
+			conf.local_addr = (char *)p->children->content;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, locl_port_node_name))
+		{
+			conf.local_port = (u_int16_t)strtol((char *)p->children->content, NULL, 10);
+			continue;
 		}
 	}
+	return (LOG_FL|SVC_ADDR_FL|SVC_PORT_FL == set_flags)? 0: -1;
 }
 
 int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf)
 {
 	static const char log_node_name[] = "Log";
+
+	static const u_int8_t LOG_FL = 0x01;
+
+	u_int8_t set_flags = 0;
 
 	for(xmlNodePtr p = executor_node->children; p != NULL; p = p->next)
 	{
@@ -412,7 +486,10 @@ int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf)
 		{
 			conf.log_conf = new logger_base_conf;
 			get_log_basic_conf(p, *conf.log_conf);
+			set_flags |= LOG_FL;
+			continue;
 		}
 	}
+	return (LOG_FL == set_flags)? 0: -1;
 }
 

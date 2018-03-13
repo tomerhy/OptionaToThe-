@@ -7,6 +7,7 @@ public:
 	logger_base_conf()
 	: category("op"), level(3)
 	{}
+	virtual ~logger_base_conf() {}
 
 	std::string category;
 	int level;
@@ -25,6 +26,7 @@ public:
 	, max_files(2)
 	, max_size(5*1024*1024)
 	{}
+	virtual ~logger_global_conf() {}
 
 	std::string layout;
 	std::string file;
@@ -51,12 +53,15 @@ class dreamer_conf : public informer_conf
 {
 public:
 	dreamer_conf()
-	: informer_conf()
+	: informer_conf(), srvc_port(0), local_port(0)
 	{}
 	~dreamer_conf()
 	{}
 
-	std::string
+	std::string srvc_addr;
+	u_int16_t srvc_port;
+	std::string local_addr;
+	u_int16_t local_port;
 };
 
 class executor_conf
@@ -77,7 +82,7 @@ class manager_conf
 {
 public:
 	manager_conf()
-	: log_conf(NULL), info_conf(NULL), exec_conf(NULL)
+	: log_conf(NULL), info_conf(NULL), exec_conf(NULL), informer_type(manager_conf::dreamer)
 	{}
 	~manager_conf()
 	{

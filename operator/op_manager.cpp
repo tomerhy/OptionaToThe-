@@ -55,7 +55,7 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 		return -1;
 	}
 
-	if(0 != m_informer->init(conf->info_conf))
+	if(0 != m_informer->init(m_log_cat, conf->info_conf))
 	{
 		log4cpp::Category::getInstance(m_log_cat).error("%s: informer init() failed.", __FUNCTION__);
 		return -1;
