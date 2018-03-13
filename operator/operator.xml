@@ -13,18 +13,18 @@
 	<Manager>
 		<Log>
 			<Category>mng</Category>
-			<Level>notice</Level>
+			<Level>debug</Level>
 		</Log>
 		<Dreamer>
 			<Log>
 				<Category>drm</Category>
-				<Level>notice</Level>
+				<Level>debug</Level>
 			</Log>
 		</Dreamer>
 		<Executor>
 			<Log>
 				<Category>xec</Category>
-				<Level>notice</Level>
+				<Level>debug</Level>
 			</Log>
 		</Executor>
 	</Manager>
