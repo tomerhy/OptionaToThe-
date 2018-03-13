@@ -16,14 +16,20 @@ void * manager_proc(void * arg)
 }
 
 op_manager::op_manager()
-: m_proc_thread(0)
+: m_proc_thread(0), m_processed(true)
 {
 	sem_init(&m_run_flag, 0, 0);
+	pthread_mutex_init(&m_record_lock, NULL);
+	pthread_mutex_init(&m_event_lock, NULL);
+	pthread_cond_init(&m_event, NULL);
 }
 
 op_manager::~op_manager()
 {
 	sem_destroy(&m_run_flag);
+	pthread_mutex_destroy(&m_record_lock);
+	pthread_mutex_destroy(&m_event_lock);
+	pthread_cond_destroy(&m_event);
 }
 
 int op_manager::init(const std::string & log_cat, const manager_conf & conf)
@@ -124,10 +130,23 @@ int op_manager::stop()
 
 void op_manager::run()
 {
+	static const unsigned int idle_wait_ms = 250;
+
 	int run_flag_value = 0;
+	struct timespec event_timeout;
+
 	do
 	{
-		usleep(50000);
+		process_record_update();
+
+		pthread_mutex_lock(&m_event_lock);
+		clock_gettime(CLOCK_REALTIME, &event_timeout);
+		event_timeout.tv_nsec += (idle_wait_ms * 1000000/*mili-to-nano*/);
+		event_timeout.tv_sec += (event_timeout.tv_nsec / 1000000000);
+		event_timeout.tv_nsec = (event_timeout.tv_nsec%1000000000);
+		pthread_cond_timedwait(&m_event, &m_event_lock, &event_timeout);
+		pthread_mutex_unlock(&m_event_lock);
+
 		if(sem_getvalue(&m_run_flag, &run_flag_value) != 0)
 		{
 	        int errcode = errno;
@@ -139,3 +158,33 @@ void op_manager::run()
 	}while(0 < run_flag_value);
 }
 
+void op_manager::trade_info_update(const trade_info_t & update)
+{
+	pthread_mutex_lock(&m_record_lock);
+	m_record = update;
+	m_processed = false;
+	pthread_mutex_unlock(&m_record_lock);
+	pthread_cond_signal(&m_event);
+}
+
+void op_manager::process_record_update()
+{
+	bool update = false;
+	trade_info_t updated_record;
+
+	pthread_mutex_lock(&m_record_lock);
+	if(!m_processed)
+	{
+		m_processed = update = true;
+		updated_record = m_record;
+	}
+	pthread_mutex_unlock(&m_record_lock);
+
+	if(update)
+		process_record(updated_record);
+}
+
+void op_manager::process_record(const trade_info_t & rec)
+{
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: processing new record update.", __FUNCTION__);
+}
