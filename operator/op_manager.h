@@ -9,7 +9,7 @@
 
 class manager_conf;
 
-class op_manager : public infomer_cb_api
+class op_manager : public informer_cb_api
 {
     pthread_t m_proc_thread;
     std::string m_log_cat;
@@ -29,7 +29,7 @@ public:
 	op_manager();
 	~op_manager();
 
-	int init(const std::string & log_cat, const manager_conf & conf);
+	int init(const std::string & log_cat, const manager_conf * conf);
 	int start();
 	int stop();
 

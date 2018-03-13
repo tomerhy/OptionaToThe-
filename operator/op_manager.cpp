@@ -32,10 +32,10 @@ op_manager::~op_manager()
 	pthread_cond_destroy(&m_event);
 }
 
-int op_manager::init(const std::string & log_cat, const manager_conf & conf)
+int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 {
-	m_log_cat = log_cat + '.' + conf.log_conf->category;
-	log4cpp::Category::getInstance(m_log_cat).setPriority((log4cpp::Priority::PriorityLevel)conf.log_conf->level);
+	m_log_cat = log_cat + '.' + conf->log_conf->category;
+	log4cpp::Category::getInstance(m_log_cat).setPriority((log4cpp::Priority::PriorityLevel)conf->log_conf->level);
 
 	return 0;
 }

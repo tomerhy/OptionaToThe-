@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
 	op_manager * mgr = new op_manager;
 
-	if(0 != mgr->init(conf.log_conf->category, *conf.mngr_conf))
+	if(0 != mgr->init(conf.log_conf->category, conf.mngr_conf))
 	{
 		log4cpp::Category::getInstance(conf.log_conf->category).fatal("%s: failed to initialize the manager.");
 		exit(__LINE__);
