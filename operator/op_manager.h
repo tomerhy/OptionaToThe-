@@ -1,20 +1,8 @@
 
 #pragma once
 
-#include <pthread.h>
-#include <semaphore.h>
-
-#include "record.h"
-#include "informer.h"
-
-class manager_conf;
-
-class op_manager : public informer_cb_api
+class op_manager : public threaded, public informer_cb_api
 {
-    pthread_t m_proc_thread;
-    std::string m_log_cat;
-    sem_t m_run_flag;
-
     pthread_mutex_t m_record_lock, m_event_lock;
     bool m_processed;
     trade_info_t m_record;
@@ -22,7 +10,6 @@ class op_manager : public informer_cb_api
 
 	informer * m_informer;
 
-    friend void * manager_proc(void *);
 	void run();
 	void process_record_update();
 	void process_record(const trade_info_t &);

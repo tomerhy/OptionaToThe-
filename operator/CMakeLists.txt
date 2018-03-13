@@ -17,6 +17,8 @@ set(SOURCE_FILES
 	informer.h
 	dreamer.h
 	dreamer.cpp
+	threaded.h
+	threaded.cpp
 )
 
 add_executable(operator ${SOURCE_FILES})

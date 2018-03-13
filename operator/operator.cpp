@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <semaphore.h>
+
 #include <list>
 #include <iostream>
 #include <string>
@@ -21,6 +23,9 @@
 #include <event2/event.h>
 
 #include "config.h"
+#include "record.h"
+#include "threaded.h"
+#include "informer.h"
 #include "op_manager.h"
 
 void get_options(int argc, char *argv[], std::string & conf_file);
