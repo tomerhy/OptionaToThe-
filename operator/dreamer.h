@@ -20,4 +20,6 @@ public:
 	std::string get_locl_addr() const;
 	u_int16_t get_srvc_port() const;
 	u_int16_t get_locl_port() const;
+
+	static const struct timeval dream_event_timeout;
 };
