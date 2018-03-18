@@ -16,13 +16,26 @@
 #include "informer.h"
 #include "dreamer.h"
 
-dreamer::dreamer()
-: informer(), m_srvc_port(0), m_locl_port(0)
+const struct timeval dreamer::dream_event_timeout = { 0 , 50000 };
+
+void dream_cb(evutil_socket_t fd, short what, void *arg)
 {
+	((dreamer *)arg)->on_event(fd, what);
+}
+
+dreamer::dreamer()
+: informer(), m_srvc_port(0), m_locl_port(0), the_base(NULL), the_dream(NULL)
+{
+	the_base = event_base_new();
+	the_dream = event_new(the_base, -1, EV_TIMEOUT, dream_cb, this);
 }
 
 dreamer::~dreamer()
 {
+	event_free(the_dream);
+	the_dream = NULL;
+	event_base_free(the_base);
+	the_base = NULL;
 }
 
 int dreamer::init(const std::string & log_cat, const informer_conf * conf)
@@ -37,180 +50,205 @@ int dreamer::init(const std::string & log_cat, const informer_conf * conf)
 		m_srvc_port = dconf->srvc_port;
 		m_locl_addr = dconf->local_addr;
 		m_locl_port = dconf->local_port;
-
+		event_add(the_dream, &dreamer::dream_event_timeout);
 		return 0;
 	}
 	else
 	{
 		log4cpp::Category::getInstance(m_log_cat).error("%s: informer configuration cast to a dreamer's failed.", __FUNCTION__);
-		return -1;
 	}
+	return -1;
 }
-
-typedef struct
-{
-	dreamer * self;
-	struct event_base * the_base;
-	struct event * the_dream;
-}dream_prm_t;
-
-void dream_cb(evutil_socket_t, short, void *);
-
-const struct timeval dreamer::dream_event_timeout = { 0 , 50000 };
 
 void dreamer::run()
 {
-	dream_prm_t arg;
-	arg.self = this;
-	arg.the_base = event_base_new();
-	arg.the_dream = event_new(arg.the_base, -1, EV_TIMEOUT, dream_cb, &arg);
-
-	event_add(arg.the_dream, &dreamer::dream_event_timeout);
-	event_base_dispatch(arg.the_base);
-	event_base_free(arg.the_base);
+	event_base_dispatch(the_base);
 }
 
-std::string dreamer::get_log_cat() const
+void dreamer::on_event(int sockfd, u_int16_t what)
 {
-	return this->m_log_cat;
-}
-
-std::string dreamer::get_srvc_addr() const
-{
-	return this->m_srvc_addr;
-}
-
-std::string dreamer::get_locl_addr() const
-{
-	return this->m_locl_addr;
-}
-
-u_int16_t dreamer::get_srvc_port() const
-{
-	return this->m_srvc_port;
-}
-
-u_int16_t dreamer::get_locl_port() const
-{
-	return this->m_locl_port;
-}
-
-void setup_connection(dream_prm_t * drm);
-int local_bind(int sock, dream_prm_t * drm);
-void check_connection(dream_prm_t * drm);
-
-void dream_cb(evutil_socket_t sock, short what, void * arg)
-{
-	dream_prm_t * drm = (dream_prm_t *)arg;
-	event_free(drm->the_dream);
-
-	if(0 != drm->self->still_running())
+	if(0 != still_running())
 	{
-		if(0 <= sock) close(sock);
-		event_base_loopbreak(drm->the_base);
+		if(0 <= sockfd) { close(sockfd); sockfd = -1; }
+		event_base_loopbreak(the_base);
 		return;
 	}
 
-	if(0 > sock)
-		setup_connection(drm);
+	if(0 <= sockfd)
+	{
+		if(what & EV_READ)
+		{
+			do_read(sockfd);
+		}
+	}
 	else
-		check_connection(drm);
+	{
+		establish_connection(sockfd);
+	}
+
+	event_free(the_dream);
+	the_dream = event_new(the_base, sockfd, EV_TIMEOUT | ((0 <= sockfd)? EV_READ: 0), dream_cb, this);
+	event_add(the_dream, &dreamer::dream_event_timeout);
 }
 
-void setup_connection(dream_prm_t * drm)
+int dreamer::establish_connection(int & sockfd)
 {
-	int conn_sock = -1;
-	if (0 <= (conn_sock = socket(AF_INET, SOCK_STREAM, 0)))
+	if (0 <= (sockfd = socket(AF_INET, SOCK_STREAM, 0)))
 	{
-		log4cpp::Category::getInstance(drm->self->get_log_cat()).debug("%s: socket() created %d.", __FUNCTION__, conn_sock);
-		if(0 == local_bind(conn_sock, drm))
+		if(0 == bind_local_address(sockfd))
 		{
-			log4cpp::Category::getInstance(drm->self->get_log_cat()).debug("%s: local binding of [%s:%hu].",
-					__FUNCTION__, drm->self->get_locl_addr().c_str(), drm->self->get_locl_port());
-
 			struct sockaddr_in service_address;
-			if (inet_aton(drm->self->get_srvc_addr().c_str(), &service_address.sin_addr) != 0)
+			if (0 != inet_aton(m_srvc_addr.c_str(), &service_address.sin_addr))
 			{
-				service_address.sin_port = htons(drm->self->get_srvc_port());
+				service_address.sin_port = htons(m_srvc_port);
 				service_address.sin_family = AF_INET;
 
-				if(0 == connect(conn_sock, (const struct sockaddr *)&service_address, (socklen_t)sizeof(struct sockaddr_in)))
+				if(0 == connect(sockfd, (const struct sockaddr *)&service_address, (socklen_t)sizeof(struct sockaddr_in)))
 				{
-					drm->the_dream = event_new(drm->the_base, conn_sock, EV_READ|EV_TIMEOUT, dream_cb, drm);
-					event_add(drm->the_dream, &dreamer::dream_event_timeout);
-					return;
+					log4cpp::Category::getInstance(m_log_cat).debug("%s: connect() succeeded to [%s:%hu].",
+								        		__FUNCTION__, m_srvc_addr.c_str(), m_srvc_port);
+					return 0;
 				}
 				else
 				{
 			        int errcode = errno;
 			        char errmsg[256];
-			        log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: connect() failed with error %d : [%s].",
+			        log4cpp::Category::getInstance(m_log_cat).error("%s: connect() failed with error %d : [%s].",
 			        		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
 				}
 			}
 			else
 			{
-				log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: invalid service address [%s].",
-						__FUNCTION__, drm->self->get_srvc_addr().c_str());
+				log4cpp::Category::getInstance(m_log_cat).error("%s: invalid service address [%s].",
+						__FUNCTION__, m_srvc_addr.c_str());
 			}
 		}
 		else
 		{
-			log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: failed binding the local address [%s:%hu].",
-					__FUNCTION__, drm->self->get_locl_addr().c_str(), drm->self->get_locl_port());
+			log4cpp::Category::getInstance(m_log_cat).error("%s: failed binding local address.",
+					__FUNCTION__);
 		}
-		close(conn_sock);
+		close(sockfd);
+		sockfd = -1;
 	}
 	else
 	{
         int errcode = errno;
         char errmsg[256];
-        log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: socket() failed with error %d : [%s].",
+        log4cpp::Category::getInstance(m_log_cat).error("%s: socket() failed with error %d : [%s].",
         		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
 	}
-	drm->the_dream = event_new(drm->the_base, -1, EV_TIMEOUT, dream_cb, drm);
-	event_add(drm->the_dream, &dreamer::dream_event_timeout);
+	return -1;
 }
 
-int local_bind(int sock, dream_prm_t * drm)
+int dreamer::bind_local_address(int & sockfd)
 {
-	if(drm->self->get_locl_addr().empty() && 0 == drm->self->get_locl_port())
+	if(m_locl_addr.empty() && 0 == m_locl_port)
 		return 0;
 
-	std::string loc_addr = drm->self->get_locl_addr();
+	std::string loc_addr = m_locl_addr;
 	if(loc_addr.empty())
 		loc_addr = "0.0.0.0";
 
 	struct sockaddr_in local_address;
 	if (0 != inet_aton(loc_addr.c_str(), &local_address.sin_addr))
 	{
-		local_address.sin_port = htons(drm->self->get_locl_port());
+		local_address.sin_port = htons(m_locl_port);
 		local_address.sin_family = AF_INET;
 
-		if(0 != bind(sock, (const struct sockaddr *)&local_address, (socklen_t)sizeof(struct sockaddr_in)))
+		if(0 != bind(sockfd, (const struct sockaddr *)&local_address, (socklen_t)sizeof(struct sockaddr_in)))
 		{
-			log4cpp::Category::getInstance(drm->self->get_log_cat()).debug("%s: bind() of %d to [%s:%hu].",
-					__FUNCTION__, sock, drm->self->get_locl_addr().c_str(), drm->self->get_locl_port());
+			log4cpp::Category::getInstance(m_log_cat).debug("%s: bind() of %d to [%s:%hu].",
+					__FUNCTION__, sockfd, loc_addr.c_str(), m_locl_port);
 			return 0;
 		}
 		else
 		{
 	        int errcode = errno;
 	        char errmsg[256];
-	        log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: bind() failed with error %d : [%s].",
+	        log4cpp::Category::getInstance(m_log_cat).error("%s: bind() failed with error %d : [%s].",
 	        		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
 		}
 	}
 	else
 	{
-		log4cpp::Category::getInstance(drm->self->get_log_cat()).error("%s: invalid local address [%s].",
+		log4cpp::Category::getInstance(m_log_cat).error("%s: invalid local address [%s].",
 				__FUNCTION__, loc_addr.c_str());
 	}
 	return -1;
+
 }
 
-/*
- *
- *
- *
- */
+int dreamer::do_read(int & sockfd)
+{
+	typedef struct
+	{
+		u_int64_t opt_strike;
+		u_int64_t opt_put, opt_put_base, opt_put_low, opt_put_high;
+		u_int64_t opt_call, opt_call_base, opt_call_low, opt_call_high;
+	}sample_t;
+
+	#define SAMPLES_PER_RECORD 10
+	typedef struct
+	{
+		u_int64_t current;
+		int64_t percentage;
+		u_int64_t stddev;
+		sample_t samples[SAMPLES_PER_RECORD];
+	}record_t;
+
+	record_t record;
+	ssize_t readn = recv(sockfd, &record, sizeof(record_t), MSG_WAITALL);
+	if(0 < readn)
+	{
+		if(sizeof(record_t) == readn)
+		{
+			trade_info_t ti;
+			ti.current = record.current;
+			ti.current /= 100;
+			ti.change = record.percentage;
+			ti.change /= 100;
+			ti.stddev = record.stddev;
+			ti.stddev /= 100;
+			for(size_t i = 0; i < 10; ++i)
+			{
+				ti.strikes[i].call.base = record.samples[i].opt_call_base;
+				ti.strikes[i].call.high = record.samples[i].opt_call_high;
+				ti.strikes[i].call.low = record.samples[i].opt_call_low;
+				ti.strikes[i].call.current = record.samples[i].opt_call;
+
+				ti.strikes[i].put.base = record.samples[i].opt_put_base;
+				ti.strikes[i].put.high = record.samples[i].opt_put_high;
+				ti.strikes[i].put.low = record.samples[i].opt_put_low;
+				ti.strikes[i].put.current = record.samples[i].opt_put;
+
+				ti.strikes[i].strike_value = record.samples[i].opt_strike;
+			}
+			this->inform(ti);
+		}
+		else
+		{
+	        log4cpp::Category::getInstance(m_log_cat).warn("%s: recv() returned partial record size %u; disconnecting.",
+	        		__FUNCTION__, readn);
+			close(sockfd);
+			sockfd = -1;
+		}
+	}
+	else
+	{
+		if(0 > readn)
+		{
+	        int errcode = errno;
+	        char errmsg[256];
+	        log4cpp::Category::getInstance(m_log_cat).error("%s: recv() failed with error %d : [%s].",
+	        		__FUNCTION__, errcode, strerror_r(errcode, errmsg, 256));
+		}
+		else
+		{
+	        log4cpp::Category::getInstance(m_log_cat).notice("%s: recv() returned 0 bytes; the service was closed.",
+	        		__FUNCTION__, readn);
+		}
+		close(sockfd);
+		sockfd = -1;
+	}
+}
