@@ -67,6 +67,7 @@ int op_manager::start()
 		if(0 == m_informer->start())
 		{
 			log4cpp::Category::getInstance(m_log_cat).info("%s: op_manager started.", __FUNCTION__);
+			return 0;
 		}
 		else
 			log4cpp::Category::getInstance(m_log_cat).error("%s: informer start() failed.", __FUNCTION__);

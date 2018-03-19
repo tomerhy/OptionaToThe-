@@ -20,10 +20,12 @@ void * thread_proc(void * arg)
 threaded::threaded()
 : m_thread(0)
 {
+	sem_init(&m_run_flag, 0, 0);
 }
 
 threaded::~threaded()
 {
+	sem_destroy(&m_run_flag);
 }
 
 int threaded::still_running()
@@ -125,6 +127,6 @@ int threaded::stop()
         m_thread = 0;
     }
 	log4cpp::Category::getInstance(m_log_cat).info("%s: stopped.", __FUNCTION__);
-	return true;
+	return 0;
 }
 
