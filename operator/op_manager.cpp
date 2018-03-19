@@ -14,7 +14,7 @@
 #include "dreamer.h"
 
 op_manager::op_manager()
-: m_processed(true), m_informer(NULL)
+: m_processed(true), m_informer(NULL), m_balance(0.0), m_pnl(0.0)
 {
 	pthread_mutex_init(&m_record_lock, NULL);
 	pthread_mutex_init(&m_event_lock, NULL);
@@ -56,6 +56,8 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 		return -1;
 	}
 	m_informer->set_informee(this);
+	this->m_balance = conf->balance;
+	this->m_pnl = conf->pnl;
 	log4cpp::Category::getInstance(m_log_cat).info("%s: op_manager initialized.", __FUNCTION__);
 	return 0;
 }
@@ -142,5 +144,6 @@ void op_manager::process_record_update()
 
 void op_manager::process_record(const trade_info_t & rec)
 {
-	log4cpp::Category::getInstance(m_log_cat).notice("%s: processing new record update.", __FUNCTION__);
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: processing new record update. index=%f; balance=%f; P&L=%f;",
+			__FUNCTION__, rec.current, m_balance, m_pnl);
 }

@@ -52,7 +52,7 @@ typedef struct __log
 	int level;
 
 	__log()
-	: file("dreamon.log"), directory("./"), max_files(2), max_size(5*1024*1024), level(3)
+	: file("dreamon.log"), directory("./"), max_files(2), max_size(5*1024*1024), level(500)
 	{}
 }log_t;
 

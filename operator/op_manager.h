@@ -10,6 +10,8 @@ class op_manager : public threaded, public informer_cb_api
 
 	informer * m_informer;
 
+	double m_balance, m_pnl;
+
 	void run();
 	void process_record_update();
 	void process_record(const trade_info_t &);

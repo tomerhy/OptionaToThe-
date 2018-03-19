@@ -29,5 +29,7 @@
 				<Level>debug</Level>
 			</Log>
 		</Executor>
+		<Balance>12.50</Balance>
+		<PnL>-12.50</PnL>
 	</Manager>
 </Operator>

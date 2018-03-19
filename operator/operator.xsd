@@ -125,6 +125,8 @@
 						<xs:element name="Dreamer" type="DreamerConfig"/>
 					</xs:choice>
 					<xs:element name="Executor" type="ExecutorConfig"/>
+					<xs:element name="Balance" type="xs:decimal" default="0"/>
+					<xs:element name="PnL" type="xs:decimal" default="0"/>
 				</xs:sequence>
 			</xs:extension>
 		</xs:complexContent>

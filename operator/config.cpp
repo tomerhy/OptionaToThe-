@@ -306,10 +306,14 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 	static const char log_node_name[] = "Log";
 	static const char dreamer_node_name[] = "Dreamer";
 	static const char executor_node_name[] = "Executor";
+	static const char balance_node_name[] = "Balance";
+	static const char pnl_node_name[] = "PnL";
 
 	static const u_int8_t LOG_FL = 0x01;
 	static const u_int8_t INF_FL = 0x02;
 	static const u_int8_t EXE_FL = 0x04;
+	static const u_int8_t BLC_FL = 0x08;
+	static const u_int8_t PNL_FL = 0x10;
 
 	u_int8_t set_flags = 0;
 
@@ -344,8 +348,22 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 			set_flags |= EXE_FL;
 			continue;
 		}
+
+		if(0 == strcmp((const char*)p->name, balance_node_name))
+		{
+			conf.balance = strtod((char *)p->children->content, NULL);
+			set_flags |= BLC_FL;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, pnl_node_name))
+		{
+			conf.pnl = strtod((char *)p->children->content, NULL);
+			set_flags |= PNL_FL;
+			continue;
+		}
 	}
-	return (LOG_FL|INF_FL|EXE_FL == set_flags)? 0: -1;
+	return (LOG_FL|INF_FL|EXE_FL|BLC_FL|PNL_FL == set_flags)? 0: -1;
 }
 
 int load_log_level(const char * level_txt)

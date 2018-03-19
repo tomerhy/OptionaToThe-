@@ -83,6 +83,7 @@ class manager_conf
 public:
 	manager_conf()
 	: log_conf(NULL), info_conf(NULL), exec_conf(NULL), informer_type(manager_conf::dreamer)
+	, balance(0), pnl(0)
 	{}
 	~manager_conf()
 	{
@@ -96,6 +97,7 @@ public:
 	logger_base_conf * log_conf;
 	informer_conf * info_conf;
 	executor_conf * exec_conf;
+	double balance, pnl;
 };
 
 class operator_conf
