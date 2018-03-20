@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <assert.h>
 
 #include <log4cpp/Category.hh>
 #include <event2/event.h>
@@ -197,6 +198,8 @@ int dreamer::do_read(int & sockfd)
 		sample_t samples[SAMPLES_PER_RECORD];
 	}record_t;
 
+	assert(SAMPLES_PER_RECORD == STRIKE_INFO_SIZE);
+
 	record_t record;
 	ssize_t readn = recv(sockfd, &record, sizeof(record_t), MSG_WAITALL);
 	if(0 < readn)
@@ -204,13 +207,13 @@ int dreamer::do_read(int & sockfd)
 		if(sizeof(record_t) == readn)
 		{
 			trade_info_t ti;
-			ti.current = record.current;
-			ti.current /= 100;
+			ti.index = record.current;
+			ti.index /= 100;
 			ti.change = record.percentage;
 			ti.change /= 100;
 			ti.stddev = record.stddev;
 			ti.stddev /= 100;
-			for(size_t i = 0; i < 10; ++i)
+			for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
 			{
 				ti.strikes[i].call.base = record.samples[i].opt_call_base;
 				ti.strikes[i].call.high = record.samples[i].opt_call_high;

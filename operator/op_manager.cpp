@@ -144,6 +144,41 @@ void op_manager::process_record_update()
 
 void op_manager::process_record(const trade_info_t & rec)
 {
-	log4cpp::Category::getInstance(m_log_cat).notice("%s: processing new record update. index=%f; balance=%f; P&L=%f;",
-			__FUNCTION__, rec.current, m_balance, m_pnl);
+	log4cpp::Category::getInstance(m_log_cat).info("%s: processing new record update.", __FUNCTION__);
+	log4cpp::Category::getInstance(m_log_cat).debug(trade_info_txt(rec));
+
+	if(0 == valid_record(rec))
+	{
+		const strike_info_t * work_strike = get_work_strike(rec);
+		log4cpp::Category::getInstance(m_log_cat).info("%s: work-strike %s",
+				__FUNCTION__, strike_info_txt(*work_strike).c_str());
+
+		double project_wedding =  work_strike->call.current + work_strike->put.current;
+		project_wedding /= 2;
+		log4cpp::Category::getInstance(m_log_cat).info("%s: projected wedding price = %0.2f",
+				__FUNCTION__, project_wedding);
+	}
+	else
+	{
+		log4cpp::Category::getInstance(m_log_cat).warn("%s: invalid record dropped.", __FUNCTION__);
+	}
+
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",
+			__FUNCTION__, m_balance, m_pnl);
+}
+
+int op_manager::valid_record(const trade_info_t & ti)
+{
+	//this loop checks that all strikes' call & put
+	//prices are divisible by 10 without remainder
+	for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
+		if((0 != ti.strikes[i].call.current%10) || (0 != ti.strikes[i].put.current%10))
+			return -1;
+
+	return 0;
+}
+
+const strike_info_t * op_manager::get_work_strike(const trade_info_t & ti)
+{
+	return ti.strikes + 4 + (((u_int64_t)ti.index)%10)/5;
 }

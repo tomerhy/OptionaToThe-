@@ -15,6 +15,8 @@ class op_manager : public threaded, public informer_cb_api
 	void run();
 	void process_record_update();
 	void process_record(const trade_info_t &);
+	static int valid_record(const trade_info_t &);
+	static const strike_info_t * get_work_strike(const trade_info_t &);
 
 public:
 	op_manager();

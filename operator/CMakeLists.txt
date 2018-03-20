@@ -14,6 +14,7 @@ set(SOURCE_FILES
 	op_manager.h
 	op_manager.cpp
 	record.h
+	record.cpp
 	informer.h
 	dreamer.h
 	dreamer.cpp
