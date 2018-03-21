@@ -14,7 +14,7 @@
 #include "dreamer.h"
 
 op_manager::op_manager()
-: m_processed(true), m_informer(NULL), m_balance(0.0), m_pnl(0.0)
+: m_processed(true), m_informer(NULL), m_balance(0.0), m_pnl(0.0), m_in_position(false)
 {
 	pthread_mutex_init(&m_record_lock, NULL);
 	pthread_mutex_init(&m_event_lock, NULL);
@@ -58,6 +58,7 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 	m_informer->set_informee(this);
 	this->m_balance = conf->balance;
 	this->m_pnl = conf->pnl;
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",	__FUNCTION__, m_balance, m_pnl);
 	log4cpp::Category::getInstance(m_log_cat).info("%s: op_manager initialized.", __FUNCTION__);
 	return 0;
 }
@@ -147,24 +148,16 @@ void op_manager::process_record(const trade_info_t & rec)
 	log4cpp::Category::getInstance(m_log_cat).info("%s: processing new record update.", __FUNCTION__);
 	log4cpp::Category::getInstance(m_log_cat).debug(trade_info_txt(rec));
 
-	if(0 == valid_record(rec))
-	{
-		const strike_info_t * work_strike = get_work_strike(rec);
-		log4cpp::Category::getInstance(m_log_cat).info("%s: work-strike %s",
-				__FUNCTION__, strike_info_txt(*work_strike).c_str());
-
-		double project_wedding =  work_strike->call.current + work_strike->put.current;
-		project_wedding /= 2;
-		log4cpp::Category::getInstance(m_log_cat).info("%s: projected wedding price = %0.2f",
-				__FUNCTION__, project_wedding);
-	}
-	else
+	if(0 != valid_record(rec))
 	{
 		log4cpp::Category::getInstance(m_log_cat).warn("%s: invalid record dropped.", __FUNCTION__);
+		return;
 	}
 
-	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",
-			__FUNCTION__, m_balance, m_pnl);
+	if (m_in_position)
+		seek_out_of_trade(rec);
+	else
+		seek_into_trade(rec);
 }
 
 int op_manager::valid_record(const trade_info_t & ti)
@@ -178,7 +171,58 @@ int op_manager::valid_record(const trade_info_t & ti)
 	return 0;
 }
 
+void op_manager::seek_out_of_trade(const trade_info_t &)
+{
+	return ;
+}
+
+void op_manager::seek_into_trade(const trade_info_t & ti)
+{
+	const strike_info_t * work_strike = get_work_strike(ti);
+	log4cpp::Category::getInstance(m_log_cat).info("%s: work-strike %s",
+			__FUNCTION__, strike_info_txt(*work_strike).c_str());
+
+	u_int64_t project_wedding =  work_strike->call.current + work_strike->put.current;
+	project_wedding /= 2;
+	log4cpp::Category::getInstance(m_log_cat).info("%s: projected wedding price = %lu",
+			__FUNCTION__, project_wedding);
+
+	u_int64_t entry_price = project_wedding + 80;
+	entry_price  = congr_c_mod_m(30, 50, project_wedding + 80);
+	log4cpp::Category::getInstance(m_log_cat).info("%s: designated entry price = %lu",
+			__FUNCTION__, entry_price);
+	//log4cpp::Category::getInstance(m_log_cat).info("%s: target exit price-1 = %lu; target exit price-2 = %lu; target exit price-3 = %lu",
+			//__FUNCTION__, entry_price + 50, entry_price + 100, entry_price + 150);
+
+	if(work_strike->call.current == entry_price)
+		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is equal to the entry price",
+				__FUNCTION__, work_strike->call.current);
+	else if(work_strike->call.current < entry_price)
+		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is lower than the entry price",
+				__FUNCTION__, work_strike->call.current);
+	else
+		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is greater than the entry price",
+				__FUNCTION__, work_strike->call.current);
+
+	if(work_strike->put.current == entry_price)
+		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is equal to the entry price",
+				__FUNCTION__, work_strike->put.current);
+	else if(work_strike->put.current < entry_price)
+		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is lower than the entry price",
+				__FUNCTION__, work_strike->put.current);
+	else
+		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is greater than the entry price",
+				__FUNCTION__, work_strike->put.current);
+
+}
+
 const strike_info_t * op_manager::get_work_strike(const trade_info_t & ti)
 {
 	return ti.strikes + 4 + (((u_int64_t)ti.index)%10)/5;
+}
+
+u_int64_t op_manager::congr_c_mod_m(const u_int64_t c, const u_int64_t m, const u_int64_t x)
+{
+	int64_t y = c - x%m;
+	return x + ((0 > y)? (m + y): y);
 }

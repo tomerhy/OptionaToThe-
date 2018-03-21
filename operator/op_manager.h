@@ -11,12 +11,17 @@ class op_manager : public threaded, public informer_cb_api
 	informer * m_informer;
 
 	double m_balance, m_pnl;
+	bool m_in_position;
 
 	void run();
 	void process_record_update();
 	void process_record(const trade_info_t &);
+	void seek_out_of_trade(const trade_info_t &);
+	void seek_into_trade(const trade_info_t &);
+
 	static int valid_record(const trade_info_t &);
 	static const strike_info_t * get_work_strike(const trade_info_t &);
+	static u_int64_t congr_c_mod_m(const u_int64_t c, const u_int64_t m, const u_int64_t x);
 
 public:
 	op_manager();
