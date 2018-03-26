@@ -26,6 +26,7 @@
 #include "record.h"
 #include "threaded.h"
 #include "informer.h"
+#include "executor.h"
 #include "op_manager.h"
 
 void get_options(int argc, char *argv[], std::string & conf_file);

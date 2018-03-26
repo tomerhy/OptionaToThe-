@@ -9,6 +9,7 @@ class op_manager : public threaded, public informer_cb_api
 	pthread_cond_t m_event;
 
 	informer * m_informer;
+	executor * m_executor;
 
 	double m_balance, m_pnl;
 	bool m_in_position;

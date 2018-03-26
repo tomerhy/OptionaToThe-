@@ -10,11 +10,13 @@
 #include "record.h"
 #include "threaded.h"
 #include "informer.h"
+#include "executor.h"
 #include "op_manager.h"
 #include "dreamer.h"
 
 op_manager::op_manager()
-: m_processed(true), m_informer(NULL), m_balance(0.0), m_pnl(0.0), m_in_position(false)
+: m_processed(true), m_informer(NULL), m_executor(NULL)
+, m_balance(0.0), m_pnl(0.0), m_in_position(false)
 {
 	pthread_mutex_init(&m_record_lock, NULL);
 	pthread_mutex_init(&m_event_lock, NULL);
@@ -55,7 +57,7 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 		log4cpp::Category::getInstance(m_log_cat).error("%s: informer init() failed.", __FUNCTION__);
 		return -1;
 	}
-	m_informer->set_informee(this);
+	m_informer->set_manager(this);
 	this->m_balance = conf->balance;
 	this->m_pnl = conf->pnl;
 	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",	__FUNCTION__, m_balance, m_pnl);

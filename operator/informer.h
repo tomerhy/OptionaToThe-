@@ -10,14 +10,14 @@ public:
 class informer : public threaded
 {
 private:
-	informer_cb_api * m_informee;
+	informer_cb_api * m_manager;
 protected:
-	void inform(const trade_info_t & update) { m_informee->trade_info_update(update); }
+	void inform(const trade_info_t & update) { m_manager->trade_info_update(update); }
 public:
-	informer() : m_informee(NULL) {}
+	informer() : m_manager(NULL) {}
 	virtual ~informer() {}
 
-	void set_informee(informer_cb_api * informee) { m_informee = informee; }
+	void set_manager(informer_cb_api * manager) { m_manager = manager; }
 
 	virtual int init(const std::string & log_cat, const informer_conf * conf) = 0;
 };
