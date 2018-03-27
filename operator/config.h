@@ -78,12 +78,23 @@ public:
 	logger_base_conf * log_conf;
 };
 
+class test_executor_conf : public executor_conf
+{
+public:
+	test_executor_conf()
+	: executor_conf()
+	{}
+	virtual ~test_executor_conf()
+	{
+	}
+};
+
 class manager_conf
 {
 public:
 	manager_conf()
 	: log_conf(NULL), info_conf(NULL), exec_conf(NULL), informer_type(manager_conf::dreamer)
-	, balance(0), pnl(0)
+	, executor_type(manager_conf::test), balance(0), pnl(0)
 	{}
 	~manager_conf()
 	{
@@ -93,6 +104,7 @@ public:
 	}
 
 	enum { dreamer = 0 } informer_type;
+	enum { test = 0 } executor_type;
 
 	logger_base_conf * log_conf;
 	informer_conf * info_conf;

@@ -28,4 +28,16 @@ public:
 	virtual ~executor();
 
 	void set_manager(executor_cb_api * manager) { m_manager = manager; }
+
+	virtual void execute(const trade_request_t &) = 0;
+};
+
+class test_executor : public executor
+{
+	void run();
+public:
+	test_executor();
+	virtual ~test_executor();
+
+	void execute(const trade_request_t &);
 };

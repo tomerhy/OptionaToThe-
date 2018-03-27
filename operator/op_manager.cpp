@@ -31,6 +31,12 @@ op_manager::~op_manager()
 		m_informer = NULL;
 	}
 
+	if(NULL != m_executor)
+	{
+		delete m_executor;
+		m_executor = NULL;
+	}
+
 	pthread_mutex_destroy(&m_record_lock);
 	pthread_mutex_destroy(&m_event_lock);
 	pthread_cond_destroy(&m_event);
@@ -58,6 +64,17 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 		return -1;
 	}
 	m_informer->set_manager(this);
+
+	switch(conf->executor_type)
+	{
+	case manager_conf::test:
+		log4cpp::Category::getInstance(m_log_cat).debug("%s: test type executor set.", __FUNCTION__);
+		this->m_executor = new test_executor;
+		break;
+	default:
+		log4cpp::Category::getInstance(m_log_cat).error("%s: set executor type %u is not supported.", __FUNCTION__, (u_int32_t)conf->informer_type);
+		return -1;
+	}
 	this->m_balance = conf->balance;
 	this->m_pnl = conf->pnl;
 	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",	__FUNCTION__, m_balance, m_pnl);

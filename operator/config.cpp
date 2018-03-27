@@ -28,7 +28,7 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf);
 int load_log_level(const char * level_txt);
 int get_log_basic_conf(xmlNodePtr log_node, logger_base_conf & conf);
 int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf);
-int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf);
+int get_test_executor_conf(xmlNodePtr executor_node, test_executor_conf & conf);
 
 int load_config(const char * config_file, operator_conf & conf)
 {
@@ -305,7 +305,7 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 {
 	static const char log_node_name[] = "Log";
 	static const char dreamer_node_name[] = "Dreamer";
-	static const char executor_node_name[] = "Executor";
+	static const char test_executor_node_name[] = "TestExecutor";
 	static const char balance_node_name[] = "Balance";
 	static const char pnl_node_name[] = "PnL";
 
@@ -341,10 +341,12 @@ int get_manager_conf(xmlNodePtr manager_node, manager_conf & conf)
 			continue;
 		}
 
-		if(0 == strcmp((const char*)p->name, executor_node_name))
+		if(0 == strcmp((const char*)p->name, test_executor_node_name))
 		{
-			conf.exec_conf = new executor_conf;
-			get_executor_conf(p, *conf.exec_conf);
+			conf.executor_type = manager_conf::test;
+			test_executor_conf * ptec = new test_executor_conf;
+			get_test_executor_conf(p, *ptec);
+			conf.exec_conf = ptec;
 			set_flags |= EXE_FL;
 			continue;
 		}
@@ -485,7 +487,7 @@ int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf)
 	return (LOG_FL|SVC_ADDR_FL|SVC_PORT_FL == set_flags)? 0: -1;
 }
 
-int get_executor_conf(xmlNodePtr executor_node, executor_conf & conf)
+int get_test_executor_conf(xmlNodePtr executor_node, test_executor_conf & conf)
 {
 	static const char log_node_name[] = "Log";
 

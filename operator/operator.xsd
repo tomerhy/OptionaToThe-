@@ -124,7 +124,9 @@
 					<xs:choice>
 						<xs:element name="Dreamer" type="DreamerConfig"/>
 					</xs:choice>
-					<xs:element name="Executor" type="ExecutorConfig"/>
+					<xs:choice>
+						<xs:element name="TestExecutor" type="TestExecutorConfig"/>
+					</xs:choice>
 					<xs:element name="Balance" type="xs:decimal" default="0"/>
 					<xs:element name="PnL" type="xs:decimal" default="0"/>
 				</xs:sequence>
@@ -176,6 +178,16 @@
 		<xs:complexContent>
 			<xs:extension base="LoggerConfig">
 				<xs:sequence/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="TestExecutorConfig">
+		<xs:annotation>
+			<xs:documentation>TestExecutor object configuration.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="ExecutorConfig">
+				<xs:sequence></xs:sequence>
 			</xs:extension>
 		</xs:complexContent>
 	</xs:complexType>

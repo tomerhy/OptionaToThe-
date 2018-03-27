@@ -23,12 +23,12 @@
 			<service_address>127.0.0.1</service_address>
 			<service_port>20001</service_port>
 		</Dreamer>
-		<Executor>
+		<TestExecutor>
 			<Log>
 				<Category>xec</Category>
 				<Level>debug</Level>
 			</Log>
-		</Executor>
+		</TestExecutor>
 		<Balance>12.50</Balance>
 		<PnL>-12.50</PnL>
 	</Manager>
