@@ -490,8 +490,12 @@ int get_dreamer_conf(xmlNodePtr dreamer_node, dreamer_conf & conf)
 int get_test_executor_conf(xmlNodePtr executor_node, test_executor_conf & conf)
 {
 	static const char log_node_name[] = "Log";
+	static const char treq_node_name[] = "TotalRequests";
+	static const char sreq_node_name[] = "SuccessRequests";
 
 	static const u_int8_t LOG_FL = 0x01;
+	static const u_int8_t TRQ_FL = 0x02;
+	static const u_int8_t SRQ_FL = 0x04;
 
 	u_int8_t set_flags = 0;
 
@@ -509,7 +513,21 @@ int get_test_executor_conf(xmlNodePtr executor_node, test_executor_conf & conf)
 			set_flags |= LOG_FL;
 			continue;
 		}
+
+		if(0 == strcmp((const char*)p->name, treq_node_name))
+		{
+			conf.total_requests = (u_int64_t)strtol((char *)p->children->content, NULL, 10);
+			set_flags |= TRQ_FL;
+			continue;
+		}
+
+		if(0 == strcmp((const char*)p->name, sreq_node_name))
+		{
+			conf.success_requests = (u_int64_t)strtol((char *)p->children->content, NULL, 10);
+			set_flags |= SRQ_FL;
+			continue;
+		}
 	}
-	return (LOG_FL == set_flags)? 0: -1;
+	return (LOG_FL|TRQ_FL|SRQ_FL == set_flags)? 0: -1;
 }
 

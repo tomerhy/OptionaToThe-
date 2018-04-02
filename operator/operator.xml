@@ -28,6 +28,8 @@
 				<Category>xec</Category>
 				<Level>debug</Level>
 			</Log>
+			<TotalRequests>7</TotalRequests>
+			<SuccessRequests>4</SuccessRequests>
 		</TestExecutor>
 		<Balance>12.50</Balance>
 		<PnL>-12.50</PnL>

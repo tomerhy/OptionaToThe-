@@ -16,6 +16,8 @@ set(SOURCE_FILES
 	record.h
 	record.cpp
 	executor.h
+	test_executor.h
+	test_executor.cpp
 	informer.h
 	dreamer.h
 	dreamer.cpp

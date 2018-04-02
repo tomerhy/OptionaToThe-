@@ -24,20 +24,13 @@ private:
 protected:
 	void report(const trade_result_t & result) { m_manager->trade_result(result); }
 public:
-	executor();
-	virtual ~executor();
+	executor() : m_manager(NULL) {}
+	virtual ~executor() {}
 
 	void set_manager(executor_cb_api * manager) { m_manager = manager; }
+
+	virtual int init(const std::string & log_cat, const executor_conf * conf) = 0;
 
 	virtual void execute(const trade_request_t &) = 0;
 };
 
-class test_executor : public executor
-{
-	void run();
-public:
-	test_executor();
-	virtual ~test_executor();
-
-	void execute(const trade_request_t &);
-};

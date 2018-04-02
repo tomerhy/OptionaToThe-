@@ -70,7 +70,7 @@ public:
 	executor_conf()
 	: log_conf(NULL)
 	{}
-	~executor_conf()
+	virtual ~executor_conf()
 	{
 		delete log_conf;
 	}
@@ -82,11 +82,13 @@ class test_executor_conf : public executor_conf
 {
 public:
 	test_executor_conf()
-	: executor_conf()
+	: executor_conf(), total_requests(1), success_requests(1)
 	{}
 	virtual ~test_executor_conf()
 	{
 	}
+
+	u_int64_t total_requests, success_requests;
 };
 
 class manager_conf

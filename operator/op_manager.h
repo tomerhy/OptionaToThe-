@@ -1,7 +1,7 @@
 
 #pragma once
 
-class op_manager : public threaded, public informer_cb_api
+class op_manager : public threaded, public informer_cb_api, public executor_cb_api
 {
     pthread_mutex_t m_record_lock, m_event_lock;
     bool m_processed;
@@ -33,4 +33,5 @@ public:
 	int stop();
 
 	void trade_info_update(const trade_info_t &);
+	void trade_result(const trade_result_t &);
 };

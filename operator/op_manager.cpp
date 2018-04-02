@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <semaphore.h>
 
-#include <log4cpp/Category.hh>
-
 #include <string>
+#include <deque>
+
+#include <log4cpp/Category.hh>
 
 #include "config.h"
 #include "record.h"
@@ -13,6 +14,7 @@
 #include "executor.h"
 #include "op_manager.h"
 #include "dreamer.h"
+#include "test_executor.h"
 
 op_manager::op_manager()
 : m_processed(true), m_informer(NULL), m_executor(NULL)
@@ -75,6 +77,14 @@ int op_manager::init(const std::string & log_cat, const manager_conf * conf)
 		log4cpp::Category::getInstance(m_log_cat).error("%s: set executor type %u is not supported.", __FUNCTION__, (u_int32_t)conf->informer_type);
 		return -1;
 	}
+
+	if(0 != m_executor->init(m_log_cat, conf->exec_conf))
+	{
+		log4cpp::Category::getInstance(m_log_cat).error("%s: executor init() failed.", __FUNCTION__);
+		return -1;
+	}
+	m_executor->set_manager(this);
+
 	this->m_balance = conf->balance;
 	this->m_pnl = conf->pnl;
 	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance=%f; P&L=%f;",	__FUNCTION__, m_balance, m_pnl);
