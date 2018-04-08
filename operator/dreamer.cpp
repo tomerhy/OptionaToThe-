@@ -206,7 +206,7 @@ int dreamer::do_read(int & sockfd)
 	{
 		if(sizeof(record_t) == readn)
 		{
-			trade_info_t ti;
+			trade_info ti;
 			ti.index = record.current;
 			ti.index /= 100;
 			ti.change = record.percentage;

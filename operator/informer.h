@@ -4,7 +4,7 @@
 class informer_cb_api
 {
 public:
-	virtual void trade_info_update(const trade_info_t &) = 0;
+	virtual void trade_info_update(const trade_info &) = 0;
 };
 
 class informer : public threaded
@@ -12,7 +12,7 @@ class informer : public threaded
 private:
 	informer_cb_api * m_manager;
 protected:
-	void inform(const trade_info_t & update) { m_manager->trade_info_update(update); }
+	void inform(const trade_info & update) { m_manager->trade_info_update(update); }
 public:
 	informer() : m_manager(NULL) {}
 	virtual ~informer() {}

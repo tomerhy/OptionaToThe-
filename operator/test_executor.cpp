@@ -7,6 +7,7 @@
 #include <log4cpp/Category.hh>
 
 #include "config.h"
+#include "record.h"
 #include "threaded.h"
 #include "executor.h"
 #include "test_executor.h"
@@ -60,7 +61,7 @@ void test_executor::run()
 	}while(0 == still_running());
 }
 
-void test_executor::execute(const trade_request_t & req)
+void test_executor::execute(const trade_request & req)
 {
 	pthread_mutex_lock(&m_reque_lock);
 	m_reque.push_back(req);
@@ -71,7 +72,7 @@ void test_executor::execute(const trade_request_t & req)
 bool test_executor::process_trade_requests()
 {
 	bool requested = false;
-	trade_request_t req;
+	trade_request req;
 
 	pthread_mutex_lock(&m_reque_lock);
 	if(!m_reque.empty())
@@ -86,9 +87,9 @@ bool test_executor::process_trade_requests()
 	return requested;
 }
 
-void test_executor::process_trade_request(const trade_request_t & request)
+void test_executor::process_trade_request(const trade_request & request)
 {
-	trade_result_t result;
+	trade_result result;
 	result.id = request.id;
 
 	u_int64_t x = ((u_int64_t)rand())%m_total_requests;

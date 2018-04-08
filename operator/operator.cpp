@@ -8,6 +8,7 @@
 #include <list>
 #include <iostream>
 #include <string>
+#include <deque>
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -1,26 +1,54 @@
 
 #pragma once
 
-typedef struct
+class record_base
 {
+public:
+	record_base() : id(0) {}
+	virtual ~record_base() {}
+
+	int id;
+};
+
+class price_info
+{
+public:
 	u_int64_t current, base, low, high;
-}price_info_t;
 
-std::string price_info_txt(const price_info_t &);
+	std::string as_txt() const;
+};
 
-typedef struct
+class strike_info
 {
+public:
 	u_int64_t strike_value;
-	price_info_t put, call;
-}strike_info_t;
+	price_info put, call;
 
-std::string strike_info_txt(const strike_info_t &);
+	std::string as_txt() const;
+};
 
 #define STRIKE_INFO_SIZE 10
-typedef struct
-{
-	double index, change, stddev;
-	strike_info_t strikes[STRIKE_INFO_SIZE];
-}trade_info_t;
 
-std::string trade_info_txt(const trade_info_t &);
+class trade_info : public record_base
+{
+public:
+	double index, change, stddev;
+	strike_info strikes[STRIKE_INFO_SIZE];
+
+	std::string as_txt() const;
+};
+
+class trade_request : public record_base
+{
+public:
+
+	std::string as_txt() const;
+};
+
+class trade_result : public record_base
+{
+public:
+	int result;
+
+	std::string as_txt() const;
+};

@@ -17,7 +17,7 @@
 #include "test_executor.h"
 
 op_manager::op_manager()
-: m_processed(true), m_informer(NULL), m_executor(NULL)
+: m_informer(NULL), m_executor(NULL)
 , m_balance(0.0), m_pnl(0.0), m_in_position(false)
 {
 	pthread_mutex_init(&m_record_lock, NULL);
@@ -134,48 +134,52 @@ void op_manager::run()
 
 	do
 	{
-		process_record_update();
-
-		pthread_mutex_lock(&m_event_lock);
-		clock_gettime(CLOCK_REALTIME, &event_timeout);
-		event_timeout.tv_nsec += (idle_wait_ms * 1000000/*mili-to-nano*/);
-		event_timeout.tv_sec += (event_timeout.tv_nsec / 1000000000);
-		event_timeout.tv_nsec = (event_timeout.tv_nsec%1000000000);
-		pthread_cond_timedwait(&m_event, &m_event_lock, &event_timeout);
-		pthread_mutex_unlock(&m_event_lock);
+		if(!process_record())
+		{
+			pthread_mutex_lock(&m_event_lock);
+			clock_gettime(CLOCK_REALTIME, &event_timeout);
+			event_timeout.tv_nsec += (idle_wait_ms * 1000000/*mili-to-nano*/);
+			event_timeout.tv_sec += (event_timeout.tv_nsec / 1000000000);
+			event_timeout.tv_nsec = (event_timeout.tv_nsec%1000000000);
+			pthread_cond_timedwait(&m_event, &m_event_lock, &event_timeout);
+			pthread_mutex_unlock(&m_event_lock);
+		}
 	}while(0 == still_running());
 }
 
-void op_manager::trade_info_update(const trade_info_t & update)
+void op_manager::trade_info_update(const trade_info & update)
 {
+	trade_info * p = new trade_info(update);
 	pthread_mutex_lock(&m_record_lock);
-	m_record = update;
-	m_processed = false;
+	m_record_queue.push_back(p);
 	pthread_mutex_unlock(&m_record_lock);
 	pthread_cond_signal(&m_event);
 }
 
-void op_manager::process_record_update()
+bool op_manager::process_record()
 {
-	bool update = false;
-	trade_info_t updated_record;
-
+	record_base * prec = NULL;
 	pthread_mutex_lock(&m_record_lock);
-	if(!m_processed)
+	if(!m_record_queue.empty())
 	{
-		m_processed = update = true;
-		updated_record = m_record;
+		prec = *m_record_queue.begin();
+		m_record_queue.pop_front();
 	}
 	pthread_mutex_unlock(&m_record_lock);
 
-	if(update)
-		process_record(updated_record);
+	if(NULL != prec)
+	{
+		process_record(prec);
+		return true;
+	}
+	return false;
 }
 
-void op_manager::process_record(const trade_info_t & rec)
+/*
+void op_manager::process_record(const trade_info & rec)
 {
 	log4cpp::Category::getInstance(m_log_cat).info("%s: processing new record update.", __FUNCTION__);
-	log4cpp::Category::getInstance(m_log_cat).debug(trade_info_txt(rec));
+	log4cpp::Category::getInstance(m_log_cat).debug(rec.as_txt());
 
 	if(0 != valid_record(rec))
 	{
@@ -187,9 +191,9 @@ void op_manager::process_record(const trade_info_t & rec)
 		seek_out_of_trade(rec);
 	else
 		seek_into_trade(rec);
-}
+}*/
 
-int op_manager::valid_record(const trade_info_t & ti)
+int op_manager::valid_record(const trade_info & ti)
 {
 	//this loop checks that all strikes' call & put
 	//prices are divisible by 10 without remainder
@@ -200,16 +204,16 @@ int op_manager::valid_record(const trade_info_t & ti)
 	return 0;
 }
 
-void op_manager::seek_out_of_trade(const trade_info_t &)
+void op_manager::seek_out_of_trade(const trade_info &)
 {
 	return ;
 }
 
-void op_manager::seek_into_trade(const trade_info_t & ti)
+void op_manager::seek_into_trade(const trade_info & ti)
 {
-	const strike_info_t * work_strike = get_work_strike(ti);
+	const strike_info * work_strike = get_work_strike(ti);
 	log4cpp::Category::getInstance(m_log_cat).info("%s: work-strike %s",
-			__FUNCTION__, strike_info_txt(*work_strike).c_str());
+			__FUNCTION__, work_strike->as_txt().c_str());
 
 	u_int64_t project_wedding =  work_strike->call.current + work_strike->put.current;
 	project_wedding /= 2;
@@ -245,7 +249,7 @@ void op_manager::seek_into_trade(const trade_info_t & ti)
 
 }
 
-const strike_info_t * op_manager::get_work_strike(const trade_info_t & ti)
+const strike_info * op_manager::get_work_strike(const trade_info & ti)
 {
 	return ti.strikes + 4 + (((u_int64_t)ti.index)%10)/5;
 }

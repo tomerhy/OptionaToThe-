@@ -5,26 +5,26 @@
 
 #include "record.h"
 
-std::string price_info_txt(const price_info_t & pi)
+std::string price_info::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[curr=" << pi.current << "; base=" << pi.base << "; low=" << pi.low << "; high=" << pi.high << "]";
+	ss << "[current=" << current << "; base=" << base << "; low=" << low << "; high=" << high << "]";
 	return ss.str();
 }
 
-std::string strike_info_txt(const strike_info_t & si)
+std::string strike_info::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[strike=" << si.strike_value << "; call=" << price_info_txt(si.call) << "; put=" << price_info_txt(si.put) << "]";
+	ss << "[strike=" << strike_value << "; call=" << call.as_txt() << "; put=" << put.as_txt() << "]";
 	return ss.str();
 }
 
-std::string trade_info_txt(const trade_info_t & ti)
+std::string trade_info::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[index=" << ti.index << "; change=" << ti.change << "; stddev=" << ti.stddev << "; ";
+	ss << "[index=" << index << "; change=" << change << "; stddev=" << stddev << "; ";
 	for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
-		ss << strike_info_txt(ti.strikes[i]);
+		ss << strikes[i].as_txt();
 	ss << "]";
 	return ss.str();
 }
