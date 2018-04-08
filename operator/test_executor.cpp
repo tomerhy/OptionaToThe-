@@ -1,4 +1,5 @@
 
+#include <stdlib.h>
 #include <deque>
 #include <string>
 #include <semaphore.h>
@@ -11,10 +12,12 @@
 #include "test_executor.h"
 
 test_executor::test_executor()
+: m_total_requests(0), m_success_requests(0)
 {
 	pthread_mutex_init(&m_event_lock, NULL);
 	pthread_mutex_init(&m_reque_lock, NULL);
 	pthread_cond_init(&m_event, NULL);
+	srand(1);
 }
 
 test_executor::~test_executor()
@@ -45,7 +48,7 @@ void test_executor::run()
 
 	do
 	{
-		process_trade_requests();
+		while(process_trade_requests());
 
 		pthread_mutex_lock(&m_event_lock);
 		clock_gettime(CLOCK_REALTIME, &event_timeout);
@@ -63,4 +66,35 @@ void test_executor::execute(const trade_request_t & req)
 	m_reque.push_back(req);
 	pthread_mutex_unlock(&m_reque_lock);
 	pthread_cond_signal(&m_event);
+}
+
+bool test_executor::process_trade_requests()
+{
+	bool requested = false;
+	trade_request_t req;
+
+	pthread_mutex_lock(&m_reque_lock);
+	if(!m_reque.empty())
+	{
+		req = *m_reque.begin();
+		m_reque.pop_front();
+	}
+	pthread_mutex_unlock(&m_reque_lock);
+
+	if(requested)
+		process_trade_request(req);
+	return requested;
+}
+
+void test_executor::process_trade_request(const trade_request_t & request)
+{
+	trade_result_t result;
+	result.id = request.id;
+
+	u_int64_t x = ((u_int64_t)rand())%m_total_requests;
+	if(m_success_requests > x)
+		result.result = 0;
+	else
+		result.result = -1;
+	this->report(result);
 }

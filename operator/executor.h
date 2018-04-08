@@ -8,7 +8,7 @@ typedef struct
 
 typedef struct
 {
-	int id;
+	int id, result;
 }trade_result_t;
 
 class executor_cb_api

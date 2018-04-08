@@ -8,7 +8,8 @@ class test_executor : public executor
 	pthread_cond_t m_event;
 	std::deque<trade_request_t> m_reque;
 
-	void process_trade_requests();
+	bool process_trade_requests();
+	void process_trade_request(const trade_request_t &);
 protected:
 	void run();
 public:
