@@ -16,6 +16,9 @@ class op_manager : public threaded, public informer_cb_api, public executor_cb_a
 	void run();
 	bool process_record();
 	void process_record(const record_base *);
+	void process_trade_info_record(const trade_info & tirec);
+	void process_trade_result_record(const record_base * prec);
+
 	void seek_out_of_trade(const trade_info &);
 	void seek_into_trade(const trade_info &);
 

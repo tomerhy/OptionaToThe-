@@ -49,15 +49,16 @@ void test_executor::run()
 
 	do
 	{
-		while(process_trade_requests());
-
-		pthread_mutex_lock(&m_event_lock);
-		clock_gettime(CLOCK_REALTIME, &event_timeout);
-		event_timeout.tv_nsec += (idle_wait_ms * 1000000/*mili-to-nano*/);
-		event_timeout.tv_sec += (event_timeout.tv_nsec / 1000000000);
-		event_timeout.tv_nsec = (event_timeout.tv_nsec%1000000000);
-		pthread_cond_timedwait(&m_event, &m_event_lock, &event_timeout);
-		pthread_mutex_unlock(&m_event_lock);
+		if(!process_trade_requests())
+		{
+			pthread_mutex_lock(&m_event_lock);
+			clock_gettime(CLOCK_REALTIME, &event_timeout);
+			event_timeout.tv_nsec += (idle_wait_ms * 1000000/*mili-to-nano*/);
+			event_timeout.tv_sec += (event_timeout.tv_nsec / 1000000000);
+			event_timeout.tv_nsec = (event_timeout.tv_nsec%1000000000);
+			pthread_cond_timedwait(&m_event, &m_event_lock, &event_timeout);
+			pthread_mutex_unlock(&m_event_lock);
+		}
 	}while(0 == still_running());
 }
 
@@ -90,12 +91,12 @@ bool test_executor::process_trade_requests()
 void test_executor::process_trade_request(const trade_request & request)
 {
 	trade_result result;
-	result.id = request.id;
+	result.set_id(request.get_id());
 
 	u_int64_t x = ((u_int64_t)rand())%m_total_requests;
 	if(m_success_requests > x)
-		result.result = 0;
+		result.set_result(0);
 	else
-		result.result = -1;
+		result.set_result(-1);
 	this->report(result);
 }

@@ -156,6 +156,15 @@ void op_manager::trade_info_update(const trade_info & update)
 	pthread_cond_signal(&m_event);
 }
 
+void op_manager::on_trade_result(const trade_result & res)
+{
+	trade_result * p = new trade_result(res);
+	pthread_mutex_lock(&m_record_lock);
+	m_record_queue.push_back(p);
+	pthread_mutex_unlock(&m_record_lock);
+	pthread_cond_signal(&m_event);
+}
+
 bool op_manager::process_record()
 {
 	record_base * prec = NULL;
@@ -170,28 +179,51 @@ bool op_manager::process_record()
 	if(NULL != prec)
 	{
 		process_record(prec);
+		delete prec;
 		return true;
 	}
 	return false;
 }
 
-/*
-void op_manager::process_record(const trade_info & rec)
+void op_manager::process_record(const record_base * prec)
+{
+	switch(prec->get_type())
+	{
+	case trade_info_record:
+		{
+			const trade_info * tirec = dynamic_cast<const trade_info *>(prec);
+			if(NULL != tirec)
+				process_trade_info_record(*tirec);
+			else
+				log4cpp::Category::getInstance(m_log_cat).warn("%s: trade info record cast failure.", __FUNCTION__);
+		}
+		break;
+	case trade_result_record:
+		{
+			process_trade_result_record(prec);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void op_manager::process_trade_info_record(const trade_info & tirec)
 {
 	log4cpp::Category::getInstance(m_log_cat).info("%s: processing new record update.", __FUNCTION__);
-	log4cpp::Category::getInstance(m_log_cat).debug(rec.as_txt());
+	log4cpp::Category::getInstance(m_log_cat).debug(tirec.as_txt());
 
-	if(0 != valid_record(rec))
+	if(0 != valid_record(tirec))
 	{
 		log4cpp::Category::getInstance(m_log_cat).warn("%s: invalid record dropped.", __FUNCTION__);
 		return;
 	}
 
 	if (m_in_position)
-		seek_out_of_trade(rec);
+		seek_out_of_trade(tirec);
 	else
-		seek_into_trade(rec);
-}*/
+		seek_into_trade(tirec);
+}
 
 int op_manager::valid_record(const trade_info & ti)
 {
@@ -251,7 +283,7 @@ void op_manager::seek_into_trade(const trade_info & ti)
 
 const strike_info * op_manager::get_work_strike(const trade_info & ti)
 {
-	return ti.strikes + 4 + (((u_int64_t)ti.index)%10)/5;
+	return ti.strikes + 4 + (((u_int64_t)ti.get_index())%10)/5;
 }
 
 u_int64_t op_manager::congr_c_mod_m(const u_int64_t c, const u_int64_t m, const u_int64_t x)

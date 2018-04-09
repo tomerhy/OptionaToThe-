@@ -207,12 +207,9 @@ int dreamer::do_read(int & sockfd)
 		if(sizeof(record_t) == readn)
 		{
 			trade_info ti;
-			ti.index = record.current;
-			ti.index /= 100;
-			ti.change = record.percentage;
-			ti.change /= 100;
-			ti.stddev = record.stddev;
-			ti.stddev /= 100;
+			ti.set_index((double)record.current/100.0);
+			ti.set_change((double)record.percentage/100.0);
+			ti.set_stddev((double)record.stddev/100.0);
 			for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
 			{
 				ti.strikes[i].call.base = record.samples[i].opt_call_base;
