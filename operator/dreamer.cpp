@@ -212,15 +212,15 @@ int dreamer::do_read(int & sockfd)
 			ti.set_stddev((double)record.stddev/100.0);
 			for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
 			{
-				ti.strikes[i].call.base = record.samples[i].opt_call_base;
-				ti.strikes[i].call.high = record.samples[i].opt_call_high;
-				ti.strikes[i].call.low = record.samples[i].opt_call_low;
-				ti.strikes[i].call.current = record.samples[i].opt_call;
+				ti.strikes[i].call.set_base(record.samples[i].opt_call_base);
+				ti.strikes[i].call.set_high(record.samples[i].opt_call_high);
+				ti.strikes[i].call.set_low(record.samples[i].opt_call_low);
+				ti.strikes[i].call.set_current(record.samples[i].opt_call);
 
-				ti.strikes[i].put.base = record.samples[i].opt_put_base;
-				ti.strikes[i].put.high = record.samples[i].opt_put_high;
-				ti.strikes[i].put.low = record.samples[i].opt_put_low;
-				ti.strikes[i].put.current = record.samples[i].opt_put;
+				ti.strikes[i].put.set_base(record.samples[i].opt_put_base);
+				ti.strikes[i].put.set_high(record.samples[i].opt_put_high);
+				ti.strikes[i].put.set_low(record.samples[i].opt_put_low);
+				ti.strikes[i].put.set_current(record.samples[i].opt_put);
 
 				ti.strikes[i].strike_value = record.samples[i].opt_strike;
 			}

@@ -230,7 +230,7 @@ int op_manager::valid_record(const trade_info & ti)
 	//this loop checks that all strikes' call & put
 	//prices are divisible by 10 without remainder
 	for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
-		if((0 != ti.strikes[i].call.current%10) || (0 != ti.strikes[i].put.current%10))
+		if((0 != ti.strikes[i].call.get_current()%10) || (0 != ti.strikes[i].put.get_current()%10))
 			return -1;
 
 	return 0;
@@ -247,7 +247,7 @@ void op_manager::seek_into_trade(const trade_info & ti)
 	log4cpp::Category::getInstance(m_log_cat).info("%s: work-strike %s",
 			__FUNCTION__, work_strike->as_txt().c_str());
 
-	u_int64_t project_wedding =  work_strike->call.current + work_strike->put.current;
+	u_int64_t project_wedding =  work_strike->call.get_current() + work_strike->put.get_current();
 	project_wedding /= 2;
 	log4cpp::Category::getInstance(m_log_cat).info("%s: projected wedding price = %lu",
 			__FUNCTION__, project_wedding);
@@ -259,25 +259,25 @@ void op_manager::seek_into_trade(const trade_info & ti)
 	//log4cpp::Category::getInstance(m_log_cat).info("%s: target exit price-1 = %lu; target exit price-2 = %lu; target exit price-3 = %lu",
 			//__FUNCTION__, entry_price + 50, entry_price + 100, entry_price + 150);
 
-	if(work_strike->call.current == entry_price)
+	if(work_strike->call.get_current() == entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is equal to the entry price",
-				__FUNCTION__, work_strike->call.current);
-	else if(work_strike->call.current < entry_price)
+				__FUNCTION__, work_strike->call.get_current());
+	else if(work_strike->call.get_current() < entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is lower than the entry price",
-				__FUNCTION__, work_strike->call.current);
+				__FUNCTION__, work_strike->call.get_current());
 	else
 		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is greater than the entry price",
-				__FUNCTION__, work_strike->call.current);
+				__FUNCTION__, work_strike->call.get_current());
 
-	if(work_strike->put.current == entry_price)
+	if(work_strike->put.get_current() == entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is equal to the entry price",
-				__FUNCTION__, work_strike->put.current);
-	else if(work_strike->put.current < entry_price)
+				__FUNCTION__, work_strike->put.get_current());
+	else if(work_strike->put.get_current() < entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is lower than the entry price",
-				__FUNCTION__, work_strike->put.current);
+				__FUNCTION__, work_strike->put.get_current());
 	else
 		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is greater than the entry price",
-				__FUNCTION__, work_strike->put.current);
+				__FUNCTION__, work_strike->put.get_current());
 
 }
 

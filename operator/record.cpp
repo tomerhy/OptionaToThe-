@@ -5,20 +5,69 @@
 
 #include "record.h"
 
+price_info::price_info()
+: m_current(0), m_base(0), m_low(0), m_high(0)
+{
+}
+
+price_info::price_info(const price_info & other)
+: m_current(other.m_current), m_base(other.m_base), m_low(other.m_low), m_high(other.m_high)
+{
+}
+
+u_int64_t price_info::get_current() const
+{
+	return m_current;
+}
+
+u_int64_t price_info::get_base() const
+{
+	return m_base;
+}
+
+u_int64_t price_info::get_low() const
+{
+	return m_low;
+}
+
+u_int64_t price_info::get_high() const
+{
+	return m_high;
+}
+
+void price_info::set_current(const u_int64_t current)
+{
+	m_current = current;
+}
+
+void price_info::set_base(const u_int64_t base)
+{
+	m_base = base;
+}
+
+void price_info::set_low(const u_int64_t low)
+{
+	m_low = low;
+}
+
+void price_info::set_high(const u_int64_t high)
+{
+	m_high = high;
+}
+
 std::string price_info::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[current=" << current << "; base=" << base << "; low=" << low << "; high=" << high << "]";
+	ss << "[current=" << m_current << "; base=" << m_base << "; low=" << m_low << "; high=" << m_high << "]";
 	return ss.str();
 }
-
+//*********************************************************************************//
 std::string strike_info::as_txt() const
 {
 	std::stringstream ss;
 	ss << "[strike=" << strike_value << "; call=" << call.as_txt() << "; put=" << put.as_txt() << "]";
 	return ss.str();
 }
-
 //*********************************************************************************//
 trade_info::trade_info()
 : record_base(trade_info_record), m_index(0), m_change(0), m_stddev(0)

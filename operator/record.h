@@ -1,6 +1,6 @@
 
 #pragma once
-
+//*********************************************************************************//
 typedef enum
 {
 	nil_record = 0,
@@ -8,7 +8,7 @@ typedef enum
 	trade_request_record,
 	trade_result_record,
 }record_type_t;
-
+//*********************************************************************************//
 class record_base
 {
 	record_type_t m_type;
@@ -18,15 +18,26 @@ public:
 
 	record_type_t get_type() const { return m_type; }
 };
-
+//*********************************************************************************//
 class price_info
 {
+	u_int64_t m_current, m_base, m_low, m_high;
 public:
-	u_int64_t current, base, low, high;
+	price_info();
+	price_info(const price_info & other);
+
+	u_int64_t get_current() const;
+	u_int64_t get_base() const;
+	u_int64_t get_low() const;
+	u_int64_t get_high() const;
+	void set_current(const u_int64_t);
+	void set_base(const u_int64_t);
+	void set_low(const u_int64_t);
+	void set_high(const u_int64_t);
 
 	std::string as_txt() const;
 };
-
+//*********************************************************************************//
 class strike_info
 {
 public:
@@ -35,7 +46,7 @@ public:
 
 	std::string as_txt() const;
 };
-
+//*********************************************************************************//
 #define STRIKE_INFO_SIZE 10
 
 class trade_info : public record_base
