@@ -40,8 +40,14 @@ public:
 //*********************************************************************************//
 class strike_info
 {
+	u_int64_t m_strike_value;
 public:
-	u_int64_t strike_value;
+	strike_info();
+	strike_info(const strike_info & other);
+
+	u_int64_t get_strike_value() const;
+	void set_strike_value(const u_int64_t);
+
 	price_info put, call;
 
 	std::string as_txt() const;

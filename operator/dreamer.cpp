@@ -222,7 +222,7 @@ int dreamer::do_read(int & sockfd)
 				ti.strikes[i].put.set_low(record.samples[i].opt_put_low);
 				ti.strikes[i].put.set_current(record.samples[i].opt_put);
 
-				ti.strikes[i].strike_value = record.samples[i].opt_strike;
+				ti.strikes[i].set_strike_value(record.samples[i].opt_strike);
 			}
 			this->inform(ti);
 		}

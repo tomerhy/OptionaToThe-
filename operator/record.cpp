@@ -62,10 +62,30 @@ std::string price_info::as_txt() const
 	return ss.str();
 }
 //*********************************************************************************//
+strike_info::strike_info()
+: m_strike_value(0)
+{
+}
+
+strike_info::strike_info(const strike_info & other)
+: m_strike_value(other.m_strike_value), put(other.put), call(other.call)
+{
+}
+
+u_int64_t strike_info::get_strike_value() const
+{
+	return m_strike_value;
+}
+
+void strike_info::set_strike_value(const u_int64_t strike_value)
+{
+	m_strike_value = strike_value;
+}
+
 std::string strike_info::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[strike=" << strike_value << "; call=" << call.as_txt() << "; put=" << put.as_txt() << "]";
+	ss << "[strike=" << m_strike_value << "; call=" << call.as_txt() << "; put=" << put.as_txt() << "]";
 	return ss.str();
 }
 //*********************************************************************************//
@@ -75,7 +95,7 @@ trade_info::trade_info()
 }
 
 trade_info::trade_info(const trade_info & other)
-: record_base(trade_info_record), m_index(other.m_index), m_change(other.m_change), m_stddev(other.m_stddev)
+: record_base(trade_info_record), m_index(other.m_index), m_change(other.m_change), m_stddev(other.m_stddev), strikes(other.strikes)
 {
 }
 
