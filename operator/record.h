@@ -36,6 +36,8 @@ public:
 	void set_high(const u_int64_t);
 
 	std::string as_txt() const;
+
+	const price_info & operator = (const price_info &);
 };
 //*********************************************************************************//
 class strike_info
@@ -51,6 +53,8 @@ public:
 	price_info put, call;
 
 	std::string as_txt() const;
+
+	const strike_info & operator = (const strike_info &);
 };
 //*********************************************************************************//
 #define STRIKE_INFO_SIZE 10
@@ -76,13 +80,25 @@ public:
 //*********************************************************************************//
 class trade_request : public record_base
 {
+public:
+	typedef enum { tt_nil = 0, tt_buy_call, tt_buy_put, tt_sell_call, tt_sell_put } trade_target_t;
+
+private:
 	int m_id;
+	strike_info m_strike;
+	trade_target_t m_target;
 public:
 	trade_request();
 	trade_request(const trade_request & other);
 
 	int get_id() const;
 	void set_id(const int id);
+
+	const strike_info & get_strike() const;
+	void set_strike(const strike_info &);
+
+	trade_target_t get_target() const;
+	void set_target(const trade_target_t);
 
 	std::string as_txt() const;
 };

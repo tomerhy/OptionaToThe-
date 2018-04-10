@@ -3,6 +3,8 @@
 
 class op_manager : public threaded, public informer_cb_api, public executor_cb_api
 {
+	typedef enum { mark = 0, set = 1, go = 2 } trade_state_t;
+
     pthread_mutex_t m_record_lock, m_event_lock;
     std::deque<record_base *> m_record_queue;
 	pthread_cond_t m_event;
@@ -11,13 +13,14 @@ class op_manager : public threaded, public informer_cb_api, public executor_cb_a
 	executor * m_executor;
 
 	double m_balance, m_pnl;
-	bool m_in_position;
+	trade_state_t m_position;
+	trade_result m_going_trade;
 
 	void run();
 	bool process_record();
 	void process_record(const record_base *);
 	void process_trade_info_record(const trade_info & tirec);
-	void process_trade_result_record(const record_base * prec);
+	void process_trade_result_record(const trade_result & trrec);
 
 	void seek_out_of_trade(const trade_info &);
 	void seek_into_trade(const trade_info &);

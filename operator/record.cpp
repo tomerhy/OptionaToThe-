@@ -61,6 +61,18 @@ std::string price_info::as_txt() const
 	ss << "[current=" << m_current << "; base=" << m_base << "; low=" << m_low << "; high=" << m_high << "]";
 	return ss.str();
 }
+
+const price_info & price_info::operator = (const price_info & other)
+{
+	if(this != &other)
+	{
+		this->m_current = other.m_current;
+		this->m_base = other.m_base;
+		this->m_low = other.m_low;
+		this->m_high = other.m_high;
+	}
+	return *this;
+}
 //*********************************************************************************//
 strike_info::strike_info()
 : m_strike_value(0)
@@ -87,6 +99,17 @@ std::string strike_info::as_txt() const
 	std::stringstream ss;
 	ss << "[strike=" << m_strike_value << "; call=" << call.as_txt() << "; put=" << put.as_txt() << "]";
 	return ss.str();
+}
+
+const strike_info & strike_info::operator = (const strike_info & other)
+{
+	if(this != &other)
+	{
+		this->m_strike_value = other.m_strike_value;
+		this->put = other.put;
+		this->call = other.call;
+	}
+	return *this;
 }
 //*********************************************************************************//
 trade_info::trade_info()
@@ -157,6 +180,26 @@ int trade_request::get_id() const
 void trade_request::set_id(const int id)
 {
 	m_id = id;
+}
+
+const strike_info & trade_request::get_strike() const
+{
+	return m_strike;
+}
+
+void trade_request::set_strike(const strike_info & strike)
+{
+	m_strike = strike;
+}
+
+trade_request::trade_target_t trade_request::get_target() const
+{
+	return m_target;
+}
+
+void trade_request::set_target(const trade_target_t target)
+{
+	m_target = target;
 }
 
 std::string trade_request::as_txt() const

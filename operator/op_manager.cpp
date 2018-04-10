@@ -18,7 +18,7 @@
 
 op_manager::op_manager()
 : m_informer(NULL), m_executor(NULL)
-, m_balance(0.0), m_pnl(0.0), m_in_position(false)
+, m_balance(0.0), m_pnl(0.0), m_position(op_manager::mark)
 {
 	pthread_mutex_init(&m_record_lock, NULL);
 	pthread_mutex_init(&m_event_lock, NULL);
@@ -200,7 +200,11 @@ void op_manager::process_record(const record_base * prec)
 		break;
 	case trade_result_record:
 		{
-			process_trade_result_record(prec);
+			const trade_result * trrec = dynamic_cast<const trade_result *>(prec);
+			if(NULL != trrec)
+				process_trade_result_record(*trrec);
+			else
+				log4cpp::Category::getInstance(m_log_cat).warn("%s: trade result record cast failure.", __FUNCTION__);
 		}
 		break;
 	default:
@@ -219,10 +223,23 @@ void op_manager::process_trade_info_record(const trade_info & tirec)
 		return;
 	}
 
-	if (m_in_position)
-		seek_out_of_trade(tirec);
-	else
+	switch(m_position)
+	{
+	case op_manager::mark:
+		log4cpp::Category::getInstance(m_log_cat).debug("%s: mark trade position; seek into trade.", __FUNCTION__);
 		seek_into_trade(tirec);
+		break;
+	case op_manager::go:
+		log4cpp::Category::getInstance(m_log_cat).debug("%s: go trade position; seek out of trade.", __FUNCTION__);
+		seek_out_of_trade(tirec);
+		break;
+	case op_manager::set:
+		log4cpp::Category::getInstance(m_log_cat).debug("%s: set trade position; drop trade info.", __FUNCTION__);
+		break;
+	default:
+		log4cpp::Category::getInstance(m_log_cat).error("%s: unsupported trade position %d.", __FUNCTION__, (int)m_position);
+		break;
+	}
 }
 
 int op_manager::valid_record(const trade_info & ti)
@@ -238,6 +255,7 @@ int op_manager::valid_record(const trade_info & ti)
 
 void op_manager::seek_out_of_trade(const trade_info &)
 {
+#error 'here'
 	return ;
 }
 
@@ -252,16 +270,32 @@ void op_manager::seek_into_trade(const trade_info & ti)
 	log4cpp::Category::getInstance(m_log_cat).info("%s: projected wedding price = %lu",
 			__FUNCTION__, project_wedding);
 
-	u_int64_t entry_price = project_wedding + 80;
-	entry_price  = congr_c_mod_m(30, 50, project_wedding + 80);
+	u_int64_t entry_price = congr_c_mod_m(30, 50, project_wedding + 80);
 	log4cpp::Category::getInstance(m_log_cat).info("%s: designated entry price = %lu",
 			__FUNCTION__, entry_price);
 	//log4cpp::Category::getInstance(m_log_cat).info("%s: target exit price-1 = %lu; target exit price-2 = %lu; target exit price-3 = %lu",
 			//__FUNCTION__, entry_price + 50, entry_price + 100, entry_price + 150);
 
+	if(m_balance < entry_price)
+	{
+		log4cpp::Category::getInstance(m_log_cat).info("%s: entry price %lu is higher than the current balance %.02f; can't afford the trade.",
+				__FUNCTION__, entry_price, m_balance);
+		return;
+	}
+
 	if(work_strike->call.get_current() == entry_price)
-		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is equal to the entry price",
+	{
+		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is equal to the entry price; requesting trade.",
 				__FUNCTION__, work_strike->call.get_current());
+
+		trade_request request;
+		request.set_id(time(NULL)%86400);
+		request.set_strike(*work_strike);
+		request.set_target(trade_request::tt_buy_call);
+		this->m_executor->execute(request);
+		m_position = set;
+		return;
+	}
 	else if(work_strike->call.get_current() < entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: call price %lu is lower than the entry price",
 				__FUNCTION__, work_strike->call.get_current());
@@ -270,8 +304,18 @@ void op_manager::seek_into_trade(const trade_info & ti)
 				__FUNCTION__, work_strike->call.get_current());
 
 	if(work_strike->put.get_current() == entry_price)
-		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is equal to the entry price",
+	{
+		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is equal to the entry price; requesting trade.",
 				__FUNCTION__, work_strike->put.get_current());
+
+		trade_request request;
+		request.set_id(time(NULL)%86400);
+		request.set_strike(*work_strike);
+		request.set_target(trade_request::tt_buy_put);
+		this->m_executor->execute(request);
+		m_position = set;
+		return;
+	}
 	else if(work_strike->put.get_current() < entry_price)
 		log4cpp::Category::getInstance(m_log_cat).info("%s: put price %lu is lower than the entry price",
 				__FUNCTION__, work_strike->put.get_current());
@@ -290,4 +334,62 @@ u_int64_t op_manager::congr_c_mod_m(const u_int64_t c, const u_int64_t m, const 
 {
 	int64_t y = c - x%m;
 	return x + ((0 > y)? (m + y): y);
+}
+
+void op_manager::process_trade_result_record(const trade_result & trrec)
+{
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: trade result %s", __FUNCTION__, trrec.as_txt().c_str());
+
+	bool trade_success = (0 == trrec.get_result())? true: false;
+	switch(trrec.get_target())
+	{
+	case trade_request::tt_buy_call:
+		if(trade_success)
+		{
+			m_balance -= trrec.get_strike().call.get_current();
+			m_going_trade = trrec;
+			m_position = go;
+		}
+		else
+		{
+			m_position = mark;
+		}
+		break;
+	case trade_request::tt_buy_put:
+		if(trade_success)
+		{
+			m_balance -= trrec.get_strike().put.get_current();
+			m_going_trade = trrec;
+			m_position = go;
+		}
+		else
+		{
+			m_position = mark;
+		}
+		break;
+	case trade_request::tt_sell_call:
+		if(trade_success)
+		{
+			m_balance += trrec.get_strike().call.get_current();
+			m_position = mark;
+		}
+		else
+		{
+			m_position = go;
+		}
+		break;
+	case trade_request::tt_sell_put:
+		if(trade_success)
+		{
+			m_balance += trrec.get_strike().put.get_current();
+			m_position = mark;
+		}
+		else
+		{
+			m_position = go;
+		}
+		break;
+	default:
+		break;
+	}
 }
