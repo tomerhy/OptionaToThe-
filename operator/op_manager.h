@@ -14,7 +14,7 @@ class op_manager : public threaded, public informer_cb_api, public executor_cb_a
 
 	double m_balance, m_pnl;
 	trade_state_t m_position;
-	trade_result m_going_trade;
+	trade_result m_go_hold;
 
 	void run();
 	bool process_record();
@@ -28,6 +28,8 @@ class op_manager : public threaded, public informer_cb_api, public executor_cb_a
 	static int valid_record(const trade_info &);
 	static const strike_info * get_work_strike(const trade_info &);
 	static u_int64_t congr_c_mod_m(const u_int64_t c, const u_int64_t m, const u_int64_t x);
+
+	const strike_info * get_hold_strike(const trade_info &);
 
 public:
 	op_manager();

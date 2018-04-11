@@ -15,6 +15,14 @@ price_info::price_info(const price_info & other)
 {
 }
 
+void price_info::clear()
+{
+	m_current = 0;
+	m_base = 0;
+	m_low = 0;
+	m_high = 0;
+}
+
 u_int64_t price_info::get_current() const
 {
 	return m_current;
@@ -84,6 +92,13 @@ strike_info::strike_info(const strike_info & other)
 {
 }
 
+void strike_info::clear()
+{
+	m_strike_value = 0;
+	put.clear();
+	call.clear();
+}
+
 u_int64_t strike_info::get_strike_value() const
 {
 	return m_strike_value;
@@ -113,13 +128,18 @@ const strike_info & strike_info::operator = (const strike_info & other)
 }
 //*********************************************************************************//
 trade_info::trade_info()
-: record_base(trade_info_record), m_index(0), m_change(0), m_stddev(0)
+: record_base(), m_index(0), m_change(0), m_stddev(0)
 {
 }
 
 trade_info::trade_info(const trade_info & other)
-: record_base(trade_info_record), m_index(other.m_index), m_change(other.m_change), m_stddev(other.m_stddev), strikes(other.strikes)
+: record_base(), m_index(other.m_index), m_change(other.m_change), m_stddev(other.m_stddev), strikes(other.strikes)
 {
+}
+
+record_type_t trade_info::get_type() const
+{
+	return trade_info_record;
 }
 
 double trade_info::get_index() const
@@ -163,13 +183,25 @@ std::string trade_info::as_txt() const
 }
 //*********************************************************************************//
 trade_request::trade_request()
-: record_base(trade_request_record), m_id(0)
+: record_base(), m_id(0), m_target(trade_request::tt_nil)
 {
 }
 
 trade_request::trade_request(const trade_request & other)
-: record_base(trade_request_record), m_id(other.m_id)
+: record_base(), m_id(other.m_id), m_target(other.m_target)
 {
+}
+
+record_type_t trade_request::get_type() const
+{
+	return trade_request_record;
+}
+
+void trade_request::clear()
+{
+	m_id = 0;
+	m_strike.clear();
+	m_target = trade_request::tt_nil;
 }
 
 int trade_request::get_id() const
@@ -217,6 +249,17 @@ trade_result::trade_result()
 trade_result::trade_result(const trade_result & other)
 : trade_request(other), m_result(other.m_result)
 {
+}
+
+record_type_t trade_result::get_type() const
+{
+	return trade_result_record;
+}
+
+void trade_result::clear()
+{
+	m_result = 0;
+	trade_request::clear();
 }
 
 int trade_result::get_result() const

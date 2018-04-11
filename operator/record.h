@@ -11,12 +11,11 @@ typedef enum
 //*********************************************************************************//
 class record_base
 {
-	record_type_t m_type;
 public:
-	record_base(const record_type_t type) : m_type(type) {}
+	record_base() {}
 	virtual ~record_base() {}
 
-	record_type_t get_type() const { return m_type; }
+	virtual record_type_t get_type() const = 0;
 };
 //*********************************************************************************//
 class price_info
@@ -25,6 +24,8 @@ class price_info
 public:
 	price_info();
 	price_info(const price_info & other);
+
+	void clear();
 
 	u_int64_t get_current() const;
 	u_int64_t get_base() const;
@@ -47,6 +48,8 @@ public:
 	strike_info();
 	strike_info(const strike_info & other);
 
+	void clear();
+
 	u_int64_t get_strike_value() const;
 	void set_strike_value(const u_int64_t);
 
@@ -65,6 +68,8 @@ class trade_info : public record_base
 public:
 	trade_info();
 	trade_info(const trade_info & other);
+
+	virtual record_type_t get_type() const;
 
 	double get_index() const;
 	double get_change() const;
@@ -91,6 +96,10 @@ public:
 	trade_request();
 	trade_request(const trade_request & other);
 
+	virtual record_type_t get_type() const;
+
+	void clear();
+
 	int get_id() const;
 	void set_id(const int id);
 
@@ -109,6 +118,10 @@ class trade_result : public trade_request
 public:
 	trade_result();
 	trade_result(const trade_result & other);
+
+	virtual record_type_t get_type() const;
+
+	void clear();
 
 	int get_result() const;
 	void set_result(const int result);

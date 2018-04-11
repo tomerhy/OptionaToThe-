@@ -253,10 +253,50 @@ int op_manager::valid_record(const trade_info & ti)
 	return 0;
 }
 
-void op_manager::seek_out_of_trade(const trade_info &)
+void op_manager::seek_out_of_trade(const trade_info & ti)
 {
-#error 'here'
-	return ;
+	for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
+	{
+		if(m_go_hold.get_strike().get_strike_value() == ti.strikes[i].get_strike_value())
+		{
+			u_int64_t current_strike_price, purchase_strike_price;
+			switch(m_go_hold.get_target())
+			{
+			case trade_request::tt_buy_call:
+				current_strike_price = ti.strikes[i].call.get_current();
+				purchase_strike_price = m_go_hold.get_strike().call.get_current();
+				log4cpp::Category::getInstance(m_log_cat).info("%s: current=%lu; purchase=%lu;", __FUNCTION__, current_strike_price, purchase_strike_price);
+				if((current_strike_price >= (purchase_strike_price + 50)) || (current_strike_price < purchase_strike_price))
+				{
+					trade_request request;
+					request.set_id(time(NULL)%86400);
+					request.set_strike(ti.strikes[i]);
+					request.set_target(trade_request::tt_sell_call);
+					this->m_executor->execute(request);
+					m_position = set;
+				}
+				return;
+			case trade_request::tt_buy_put:
+				current_strike_price = ti.strikes[i].put.get_current();
+				purchase_strike_price = m_go_hold.get_strike().put.get_current();
+				log4cpp::Category::getInstance(m_log_cat).info("%s: current=%lu; purchase=%lu;", __FUNCTION__, current_strike_price, purchase_strike_price);
+				if((current_strike_price >= (purchase_strike_price + 50)) || (current_strike_price < purchase_strike_price))
+				{
+					trade_request request;
+					request.set_id(time(NULL)%86400);
+					request.set_strike(ti.strikes[i]);
+					request.set_target(trade_request::tt_sell_put);
+					this->m_executor->execute(request);
+					m_position = set;
+				}
+				return;
+			default:
+				log4cpp::Category::getInstance(m_log_cat).error("%s: invalid go hold trade result target %d", __FUNCTION__, (int)m_go_hold.get_target());
+				return;
+			}
+		}
+	}
+	return;
 }
 
 void op_manager::seek_into_trade(const trade_info & ti)
@@ -347,7 +387,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 		if(trade_success)
 		{
 			m_balance -= trrec.get_strike().call.get_current();
-			m_going_trade = trrec;
+			m_pnl -= trrec.get_strike().call.get_current();
+			m_go_hold = trrec;
 			m_position = go;
 		}
 		else
@@ -359,7 +400,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 		if(trade_success)
 		{
 			m_balance -= trrec.get_strike().put.get_current();
-			m_going_trade = trrec;
+			m_pnl -= trrec.get_strike().put.get_current();
+			m_go_hold = trrec;
 			m_position = go;
 		}
 		else
@@ -371,6 +413,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 		if(trade_success)
 		{
 			m_balance += trrec.get_strike().call.get_current();
+			m_pnl += trrec.get_strike().call.get_current();
+			m_go_hold.clear();
 			m_position = mark;
 		}
 		else
@@ -382,6 +426,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 		if(trade_success)
 		{
 			m_balance += trrec.get_strike().put.get_current();
+			m_pnl += trrec.get_strike().put.get_current();
+			m_go_hold.clear();
 			m_position = mark;
 		}
 		else
@@ -390,6 +436,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 		}
 		break;
 	default:
+		log4cpp::Category::getInstance(m_log_cat).error("%s: invalid trade result target %d", __FUNCTION__, (int)trrec.get_target());
 		break;
 	}
+	log4cpp::Category::getInstance(m_log_cat).notice("%s: balance %.02f; P&L %.02f;", __FUNCTION__, m_balance, m_pnl);
 }
