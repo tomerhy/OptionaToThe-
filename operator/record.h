@@ -81,6 +81,8 @@ public:
 	strike_info strikes[STRIKE_INFO_SIZE];
 
 	std::string as_txt() const;
+
+	const trade_info & operator = (const trade_info &);
 };
 //*********************************************************************************//
 class trade_request : public record_base
@@ -88,10 +90,13 @@ class trade_request : public record_base
 public:
 	typedef enum { tt_nil = 0, tt_buy_call, tt_buy_put, tt_sell_call, tt_sell_put } trade_target_t;
 
+	std::string target_as_txt(trade_target_t) const;
+
 private:
 	int m_id;
-	strike_info m_strike;
 	trade_target_t m_target;
+	u_int64_t m_strike;
+	u_int64_t m_price;
 public:
 	trade_request();
 	trade_request(const trade_request & other);
@@ -103,13 +108,18 @@ public:
 	int get_id() const;
 	void set_id(const int id);
 
-	const strike_info & get_strike() const;
-	void set_strike(const strike_info &);
-
 	trade_target_t get_target() const;
 	void set_target(const trade_target_t);
 
+	u_int64_t get_strike() const;
+	void set_strike(u_int64_t);
+
+	u_int64_t get_price() const;
+	void set_price(u_int64_t);
+
 	std::string as_txt() const;
+
+	const trade_request & operator = (const trade_request &);
 };
 //*********************************************************************************//
 class trade_result : public trade_request
@@ -118,6 +128,7 @@ class trade_result : public trade_request
 public:
 	trade_result();
 	trade_result(const trade_result & other);
+	trade_result(const trade_request & original);
 
 	virtual record_type_t get_type() const;
 
@@ -127,5 +138,7 @@ public:
 	void set_result(const int result);
 
 	std::string as_txt() const;
+
+	const trade_result & operator = (const trade_result &);
 };
 //*********************************************************************************//

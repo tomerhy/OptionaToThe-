@@ -30,6 +30,9 @@ test_executor::~test_executor()
 
 int test_executor::init(const std::string & log_cat, const executor_conf * conf)
 {
+	m_log_cat = log_cat + '.' + conf->log_conf->category;
+	log4cpp::Category::getInstance(m_log_cat).setPriority((log4cpp::Priority::PriorityLevel)conf->log_conf->level);
+
 	const test_executor_conf * ptec = dynamic_cast<const test_executor_conf *>(conf);
 	if(NULL == ptec)
 	{
@@ -47,6 +50,7 @@ void test_executor::run()
 
 	struct timespec event_timeout;
 
+	log4cpp::Category::getInstance(m_log_cat).debug("%s: test executor is running.", __FUNCTION__);
 	do
 	{
 		if(!process_trade_requests())
@@ -64,6 +68,7 @@ void test_executor::run()
 
 void test_executor::execute(const trade_request & req)
 {
+	log4cpp::Category::getInstance(m_log_cat).debug("%s: adding trade request %s.", __FUNCTION__, req.as_txt().c_str());
 	pthread_mutex_lock(&m_reque_lock);
 	m_reque.push_back(req);
 	pthread_mutex_unlock(&m_reque_lock);
@@ -76,7 +81,7 @@ bool test_executor::process_trade_requests()
 	trade_request req;
 
 	pthread_mutex_lock(&m_reque_lock);
-	if(!m_reque.empty())
+	if((requested = !m_reque.empty()))
 	{
 		req = *m_reque.begin();
 		m_reque.pop_front();
@@ -90,8 +95,9 @@ bool test_executor::process_trade_requests()
 
 void test_executor::process_trade_request(const trade_request & request)
 {
-	trade_result result;
-	result.set_id(request.get_id());
+	log4cpp::Category::getInstance(m_log_cat).debug("%s: processing trade request %s.", __FUNCTION__, request.as_txt().c_str());
+
+	trade_result result(request);
 
 	u_int64_t x = ((u_int64_t)rand())%m_total_requests;
 	if(m_success_requests > x)

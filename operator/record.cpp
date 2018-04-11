@@ -183,12 +183,12 @@ std::string trade_info::as_txt() const
 }
 //*********************************************************************************//
 trade_request::trade_request()
-: record_base(), m_id(0), m_target(trade_request::tt_nil)
+: m_id(0), m_target(trade_request::tt_nil), m_strike(0), m_price(0)
 {
 }
 
 trade_request::trade_request(const trade_request & other)
-: record_base(), m_id(other.m_id), m_target(other.m_target)
+: m_id(other.m_id), m_target(other.m_target), m_strike(other.m_strike), m_price(other.m_price)
 {
 }
 
@@ -200,7 +200,8 @@ record_type_t trade_request::get_type() const
 void trade_request::clear()
 {
 	m_id = 0;
-	m_strike.clear();
+	m_strike = 0;
+	m_price = 0;
 	m_target = trade_request::tt_nil;
 }
 
@@ -214,16 +215,6 @@ void trade_request::set_id(const int id)
 	m_id = id;
 }
 
-const strike_info & trade_request::get_strike() const
-{
-	return m_strike;
-}
-
-void trade_request::set_strike(const strike_info & strike)
-{
-	m_strike = strike;
-}
-
 trade_request::trade_target_t trade_request::get_target() const
 {
 	return m_target;
@@ -234,11 +225,56 @@ void trade_request::set_target(const trade_target_t target)
 	m_target = target;
 }
 
+u_int64_t trade_request::get_strike() const
+{
+	return m_strike;
+}
+
+void trade_request::set_strike(u_int64_t strike)
+{
+	m_strike = strike;
+}
+
+u_int64_t trade_request::get_price() const
+{
+	return m_price;
+}
+
+void trade_request::set_price(u_int64_t price)
+{
+	m_price = price;
+}
+
 std::string trade_request::as_txt() const
 {
 	std::stringstream ss;
-	ss << "[id=" << m_id << "]";
+	ss << "[id=" << m_id << "; target=" << target_as_txt(m_target) << "; strike=" << m_strike  << "; price=" << m_price << "]";
 	return ss.str();
+}
+
+const trade_request & trade_request::operator = (const trade_request & other)
+{
+	if(this != &other)
+	{
+		this->m_id = other.m_id;
+		this->m_target = other.m_target;
+		this->m_strike = other.m_strike;
+		this->m_price = other.m_price;
+	}
+	return *this;
+}
+
+std::string trade_request::target_as_txt(trade_target_t tt) const
+{
+	switch(tt)
+	{
+	case tt_nil: return "nil";
+	case tt_buy_call: return "buy_call";
+	case tt_buy_put: return "buy_put";
+	case tt_sell_call: return "sell_call";
+	case tt_sell_put: return "sell_put";
+	default: return "unknown";
+	}
 }
 //*********************************************************************************//
 trade_result::trade_result()
@@ -248,6 +284,11 @@ trade_result::trade_result()
 
 trade_result::trade_result(const trade_result & other)
 : trade_request(other), m_result(other.m_result)
+{
+}
+
+trade_result::trade_result(const trade_request & original)
+: trade_request(original), m_result(0)
 {
 }
 
@@ -277,5 +318,15 @@ std::string trade_result::as_txt() const
 	std::stringstream ss;
 	ss << "[result=" << m_result << "; request=" << trade_request::as_txt() << "]";
 	return ss.str();
+}
+
+const trade_result & trade_result::operator = (const trade_result & other)
+{
+	if(this != &other)
+	{
+		*((trade_request*)this) = *((trade_request*)(&other));
+		this->m_result = other.m_result;
+	}
+	return *this;
 }
 //*********************************************************************************//

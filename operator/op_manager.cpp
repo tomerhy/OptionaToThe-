@@ -96,13 +96,19 @@ int op_manager::start()
 {
 	if(0 == threaded::start())
 	{
-		if(0 == m_informer->start())
+		if(0 == m_executor->start())
 		{
-			log4cpp::Category::getInstance(m_log_cat).info("%s: op_manager started.", __FUNCTION__);
-			return 0;
+			if(0 == m_informer->start())
+			{
+				log4cpp::Category::getInstance(m_log_cat).info("%s: op_manager started.", __FUNCTION__);
+				return 0;
+			}
+			else
+				log4cpp::Category::getInstance(m_log_cat).error("%s: informer start() failed.", __FUNCTION__);
+			m_executor->stop();
 		}
 		else
-			log4cpp::Category::getInstance(m_log_cat).error("%s: informer start() failed.", __FUNCTION__);
+			log4cpp::Category::getInstance(m_log_cat).error("%s: executor start() failed.", __FUNCTION__);
 		threaded::stop();
 	}
 	else
@@ -116,6 +122,11 @@ int op_manager::stop()
 	if(0 != m_informer->stop())
 	{
     	log4cpp::Category::getInstance(m_log_cat).error("%s: informer stop() failed.", __FUNCTION__);
+    	result = -1;
+	}
+	if(0 != m_executor->stop())
+	{
+    	log4cpp::Category::getInstance(m_log_cat).error("%s: executor stop() failed.", __FUNCTION__);
     	result = -1;
 	}
 	if(0 != threaded::stop())
@@ -158,6 +169,8 @@ void op_manager::trade_info_update(const trade_info & update)
 
 void op_manager::on_trade_result(const trade_result & res)
 {
+	log4cpp::Category::getInstance(m_log_cat).debug("%s: adding trade result id %d.", __FUNCTION__, res.get_id());
+
 	trade_result * p = new trade_result(res);
 	pthread_mutex_lock(&m_record_lock);
 	m_record_queue.push_back(p);
@@ -257,20 +270,21 @@ void op_manager::seek_out_of_trade(const trade_info & ti)
 {
 	for(size_t i = 0; i < STRIKE_INFO_SIZE; ++i)
 	{
-		if(m_go_hold.get_strike().get_strike_value() == ti.strikes[i].get_strike_value())
+		if(m_go_hold.get_strike() == ti.strikes[i].get_strike_value())
 		{
 			u_int64_t current_strike_price, purchase_strike_price;
 			switch(m_go_hold.get_target())
 			{
 			case trade_request::tt_buy_call:
 				current_strike_price = ti.strikes[i].call.get_current();
-				purchase_strike_price = m_go_hold.get_strike().call.get_current();
+				purchase_strike_price = m_go_hold.get_price();
 				log4cpp::Category::getInstance(m_log_cat).info("%s: current=%lu; purchase=%lu;", __FUNCTION__, current_strike_price, purchase_strike_price);
 				if((current_strike_price >= (purchase_strike_price + 50)) || (current_strike_price < purchase_strike_price))
 				{
 					trade_request request;
 					request.set_id(time(NULL)%86400);
-					request.set_strike(ti.strikes[i]);
+					request.set_strike(ti.strikes[i].get_strike_value());
+					request.set_price(current_strike_price);
 					request.set_target(trade_request::tt_sell_call);
 					this->m_executor->execute(request);
 					m_position = set;
@@ -278,13 +292,14 @@ void op_manager::seek_out_of_trade(const trade_info & ti)
 				return;
 			case trade_request::tt_buy_put:
 				current_strike_price = ti.strikes[i].put.get_current();
-				purchase_strike_price = m_go_hold.get_strike().put.get_current();
+				purchase_strike_price = m_go_hold.get_price();
 				log4cpp::Category::getInstance(m_log_cat).info("%s: current=%lu; purchase=%lu;", __FUNCTION__, current_strike_price, purchase_strike_price);
 				if((current_strike_price >= (purchase_strike_price + 50)) || (current_strike_price < purchase_strike_price))
 				{
 					trade_request request;
 					request.set_id(time(NULL)%86400);
-					request.set_strike(ti.strikes[i]);
+					request.set_strike(ti.strikes[i].get_strike_value());
+					request.set_price(current_strike_price);
 					request.set_target(trade_request::tt_sell_put);
 					this->m_executor->execute(request);
 					m_position = set;
@@ -330,7 +345,8 @@ void op_manager::seek_into_trade(const trade_info & ti)
 
 		trade_request request;
 		request.set_id(time(NULL)%86400);
-		request.set_strike(*work_strike);
+		request.set_strike(work_strike->get_strike_value());
+		request.set_price(entry_price);
 		request.set_target(trade_request::tt_buy_call);
 		this->m_executor->execute(request);
 		m_position = set;
@@ -350,7 +366,8 @@ void op_manager::seek_into_trade(const trade_info & ti)
 
 		trade_request request;
 		request.set_id(time(NULL)%86400);
-		request.set_strike(*work_strike);
+		request.set_strike(work_strike->get_strike_value());
+		request.set_price(entry_price);
 		request.set_target(trade_request::tt_buy_put);
 		this->m_executor->execute(request);
 		m_position = set;
@@ -386,8 +403,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 	case trade_request::tt_buy_call:
 		if(trade_success)
 		{
-			m_balance -= trrec.get_strike().call.get_current();
-			m_pnl -= trrec.get_strike().call.get_current();
+			m_balance -= trrec.get_price();
+			m_pnl -= trrec.get_price();
 			m_go_hold = trrec;
 			m_position = go;
 		}
@@ -399,8 +416,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 	case trade_request::tt_buy_put:
 		if(trade_success)
 		{
-			m_balance -= trrec.get_strike().put.get_current();
-			m_pnl -= trrec.get_strike().put.get_current();
+			m_balance -= trrec.get_price();
+			m_pnl -= trrec.get_price();
 			m_go_hold = trrec;
 			m_position = go;
 		}
@@ -412,8 +429,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 	case trade_request::tt_sell_call:
 		if(trade_success)
 		{
-			m_balance += trrec.get_strike().call.get_current();
-			m_pnl += trrec.get_strike().call.get_current();
+			m_balance += trrec.get_price();
+			m_pnl += trrec.get_price();
 			m_go_hold.clear();
 			m_position = mark;
 		}
@@ -425,8 +442,8 @@ void op_manager::process_trade_result_record(const trade_result & trrec)
 	case trade_request::tt_sell_put:
 		if(trade_success)
 		{
-			m_balance += trrec.get_strike().put.get_current();
-			m_pnl += trrec.get_strike().put.get_current();
+			m_balance += trrec.get_price();
+			m_pnl += trrec.get_price();
 			m_go_hold.clear();
 			m_position = mark;
 		}

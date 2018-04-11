@@ -31,7 +31,7 @@
 			<TotalRequests>7</TotalRequests>
 			<SuccessRequests>4</SuccessRequests>
 		</TestExecutor>
-		<Balance>12.50</Balance>
-		<PnL>-12.50</PnL>
+		<Balance>30000</Balance>
+		<PnL>0</PnL>
 	</Manager>
 </Operator>
